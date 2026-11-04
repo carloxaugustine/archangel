@@ -1,0 +1,68 @@
+# Sample resume bullet bank for a made-up person. /internship-setup writes your real one to facts.toml.
+# The builder can only pick and order these ids. It never writes bullet text, so a resume can't claim
+# anything that isn't in this file. Text is LaTeX: write \% \& \# \_ for those characters.
+
+[header]
+name = "Alex Rivera"
+phone = "555-010-0100"
+email = "alex@example.com"
+website = "example.com"
+linkedin = "linkedin.com/in/example"
+citizenship = ""
+
+[rules]
+skills_heading = "Skills"
+required_entries = []         # entries that must appear on every resume
+variants = [["acme-tools", "acme-tools-short"]]   # bullets that say the same thing: at most one per resume
+min_bullets = 1
+max_bullets = 5
+no_short_wraps = false        # strict: refuse a bullet that wraps 1-4 words onto a new line
+require_full_page = false     # strict: refuse a page that isn't full
+
+[acronyms]
+CAD = "computer-aided design"
+
+[[education]]
+id = "state-u"
+school = "Example State University"
+location = "Springfield, IL"
+degree = "B.S. Mechanical Engineering"
+gpa = "3.6"
+dates = "Expected May 2029"
+confirmed = true
+
+# An entry may leave out location. Adding tools = "Python, SolidWorks" replaces the role and dates line, for projects with no dates.
+[[entry]]
+id = "acme"
+org = "Acme Robotics"
+location = "Springfield, IL"
+role = "Engineering Intern"
+dates = "Jun 2025 -- Aug 2025"
+confirmed = true
+bullets = [
+  { id = "acme-test", text = "Reduced gearbox test setup time 30\\% by designing a quick-change fixture in SolidWorks" },
+  { id = "acme-tools", text = "Built Python scripts that turned raw test logs into plots used in weekly design reviews" },
+  { id = "acme-tools-short", text = "Automated test log plotting with Python for weekly design reviews" },
+]
+
+[[entry]]
+id = "robot"
+org = "Student Robotics Team"
+location = "Springfield, IL"
+role = "Drivetrain Lead"
+dates = "Aug 2024 -- Present"
+confirmed = true
+bullets = [
+  { id = "robot-arm", text = "Lead a 6-member subteam designing a competition drivetrain, from CAD through machining and testing" },
+  { id = "robot-mass", text = "Cut drivetrain mass 12\\% by replacing steel brackets with pocketed aluminum, checked with hand calculations" },
+]
+
+[[skills]]
+id = "sk-programming"
+label = "Programming"
+items = "Python, MATLAB, Git"
+
+[[skills]]
+id = "sk-design"
+label = "Design"
+items = "SolidWorks, GD\\&T, 3D printing, machining"

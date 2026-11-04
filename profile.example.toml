@@ -1,0 +1,72 @@
+# The only facts the agent may enter on an application. /internship-setup fills this in.
+# An empty string means unknown: the agent asks you and never guesses.
+
+[identity]
+first_name = ""
+last_name = ""
+preferred_name = ""
+legal_name = ""
+middle_name = ""
+email = ""
+phone = ""
+street_address = ""
+city = ""
+state = ""
+zip = ""
+country = ""
+linkedin = ""
+website = ""
+github = ""
+
+[education]
+school = ""
+degree = ""
+major = ""
+gpa = ""
+graduation = ""
+start_date = ""
+class_standing = ""
+other_school = ""
+
+[work_authorization]
+us_citizen = ""
+authorized_to_work_in_us = ""
+requires_sponsorship_now_or_future = ""
+us_person_itar_ear = ""
+active_security_clearance = ""
+willing_to_obtain_clearance = ""
+
+[availability]
+start = ""
+end = ""
+willing_to_relocate = ""
+open_to_onsite = ""
+at_least_18 = ""
+
+[voluntary_self_identification]
+# Voluntary. Leave a value empty and the agent selects the form's decline option.
+gender = ""
+race_ethnicity = ""
+hispanic_latino = ""
+veteran_status = ""
+disability_status = ""
+disability_form_signature = ""
+
+[screening]
+# Answers to questions that recur across forms. Add more as you answer them.
+sat_act = ""
+previously_interviewed_at = []
+has_fellowship_or_scholarship = ""
+fellowship_or_scholarship_name = ""
+consents_to_background_check_and_drug_screen = ""
+location_preference = ""
+student_organizations = []
+software_experience = ""
+
+[misc]
+how_did_you_hear = ""
+how_did_you_hear_by_company = {}
+previously_employed_here = ""
+previous_employers = []
+referral = ""
+pronouns = ""

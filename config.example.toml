@@ -1,0 +1,450 @@
+# Internship agent settings. /internship-setup writes the [targets] and [scoring] parts for your field.
+
+[submit]
+# While true, the agent fills forms completely but stops before pressing Submit.
+# Run a few dry runs and check them before setting this to false.
+dry_run = true
+# Nothing is submitted until you approve it on the dashboard's Approve tab. Keep this on.
+require_approval = true
+# Approved applications submitted per day, best fit first, spaced out.
+max_auto_submits_per_day = 10
+submit_spacing_minutes = 3
+# Minimum score for a job to be prepared automatically.
+min_score = 6
+# When false, any required essay sends the application to you instead of being drafted.
+auto_submit_essays = true
+# The only application systems the agent ever submits. Everything else is fill and hand off.
+auto_submit_ats = ["greenhouse", "lever"]
+# Terms that may be prepared and submitted. Others stay on the shortlist.
+auto_submit_terms = ["summer"]
+# Each application already open at a company raises the score a new posting there needs.
+focus_step = 2
+# Cover letters: written only when the application requires one.
+cover_letter = "only_when_required"
+
+[targets]
+term_label = "Summer 2027"          # exact wording the GitHub lists use
+season = "summer"
+year = "2027"                       # postings naming this year score higher
+stale_terms = "fall 2026|summer 2026"   # postings naming these score lower
+home_area = ""                      # regex of nearby places, e.g. "austin|round rock|cedar park"
+github_lists = ["SimplifyJobs/Summer2027-Internships", "vanshb03/Summer2027-Internships"]
+
+[scoring]
+# Starter set for mechanical and aerospace roles. /internship-setup replaces it for your field.
+skills = ["fea", "finite element", "ansys", "solidworks", "matlab", "simulink", "python", "c++", "thermal", "heat transfer",
+          "composite", "cfd", "structural", "structures", "gd&t", "propulsion", "linux", "test", "rocket", "spacecraft",
+          "satellite", "flight", "cad", "fluid", "controls", "analysis"]
+list_include = 'mechanical|aerospace|aeronaut|astronaut|thermal|structur|propulsion|manufactur|materials?\b|composite|test|gnc|guidance|flight|hardware|rocket|space|avionics|integration|reliability|design engineer'
+list_exclude = 'software|silicon|asic|\bfpga\b|\bdata\b|analytics|digital|\bai\b|\bml\b|machine learning|cloud|security|network|firmware|\bit\b|product|business|marketing|sales|finance|chip|semiconductor|\brf\b|electrical|sdet'
+
+[[scoring.category]]
+name = "controls"
+pattern = 'guidance|navigation|\bgnc\b|gn&c|\bcontrols?\b|flight software|autonomy|estimation|attitude|adcs|flight dynamics'
+weight = 4
+
+[[scoring.category]]
+name = "thermal"
+pattern = 'thermal|heat transfer|thermodynamic|cryogenic'
+weight = 4
+
+[[scoring.category]]
+name = "systems"
+pattern = 'systems eng|system eng|integration|\bi&t\b|\btest\b|mission|verification|reliability'
+weight = 3
+
+[[scoring.category]]
+name = "other_eng"
+pattern = 'electrical|software|\brf\b|firmware|embedded|electronics|\bdata\b|machine learning|\bai\b|cyber|security|network'
+weight = 0
+
+[[scoring.category]]
+name = "mechanical"
+pattern = 'mechanical|structur|design eng|\bcad\b|propulsion|manufactur|materials?|composite|stress|launch|vehicle|hardware|aerospace|airframe|engine|fluids'
+weight = 4
+
+[filters]
+# Postings whose title contains any of these are dropped.
+exclude_title = ["phd", "mba", "master", "finance", "accounting", "marketing", "recruit", "talent acquisition", "legal", "sales", "people", "human resources", "communications", "business", "procurement", "buyer", "supply chain", "it support", "data entry", "design intern - graphic"]
+us_only = true
+
+# Starter list of company job boards (public feeds). /internship-setup trims and extends it for your field.
+[[company]]
+name = "SpaceX"
+ats = "greenhouse"
+token = "spacex"
+
+[[company]]
+name = "Anduril"
+ats = "greenhouse"
+token = "andurilindustries"
+
+[[company]]
+name = "Rocket Lab"
+ats = "greenhouse"
+token = "rocketlab"
+
+[[company]]
+name = "Relativity Space"
+ats = "greenhouse"
+token = "relativity"
+
+[[company]]
+name = "Astranis"
+ats = "greenhouse"
+token = "astranis"
+
+[[company]]
+name = "Varda Space"
+ats = "greenhouse"
+token = "vardaspace"
+
+[[company]]
+name = "Vast"
+ats = "greenhouse"
+token = "vast"
+
+[[company]]
+name = "Zipline"
+ats = "greenhouse"
+token = "flyzipline"
+
+[[company]]
+name = "Archer Aviation"
+ats = "greenhouse"
+token = "archer56"
+
+[[company]]
+name = "Divergent"
+ats = "greenhouse"
+token = "divergent"
+
+[[company]]
+name = "Electra"
+ats = "greenhouse"
+token = "electraaero"
+
+[[company]]
+name = "Epirus"
+ats = "greenhouse"
+token = "epirus"
+
+[[company]]
+name = "Heart Aerospace"
+ats = "greenhouse"
+token = "heartaerospace"
+
+[[company]]
+name = "Inversion Space"
+ats = "greenhouse"
+token = "inversionspace"
+
+[[company]]
+name = "Muon Space"
+ats = "greenhouse"
+token = "muonspace"
+
+[[company]]
+name = "Planet"
+ats = "greenhouse"
+token = "planetlabs"
+
+[[company]]
+name = "Spire"
+ats = "greenhouse"
+token = "spire"
+
+[[company]]
+name = "Ursa Major"
+ats = "greenhouse"
+token = "ursamajor"
+
+[[company]]
+name = "Hermeus"
+ats = "lever"
+token = "hermeus"
+
+[[company]]
+name = "Loft Orbital"
+ats = "lever"
+token = "loftorbital"
+
+[[company]]
+name = "Merlin Labs"
+ats = "lever"
+token = "merlinlabs"
+
+[[company]]
+name = "Shield AI"
+ats = "lever"
+token = "shieldai"
+
+[[company]]
+name = "Saronic"
+ats = "ashby"
+token = "saronic"
+
+[[company]]
+name = "Skydio"
+ats = "ashby"
+token = "skydio"
+
+[[company]]
+name = "Radiant"
+ats = "ashby"
+token = "radiant"
+
+[[company]]
+name = "Outpost"
+ats = "ashby"
+token = "outpost"
+
+[[company]]
+name = "Boom Supersonic"
+ats = "ashby"
+token = "boom"
+
+[[company]]
+name = "Astra"
+ats = "ashby"
+token = "astra"
+
+[[company]]
+name = "Astro Mechanica"
+ats = "ashby"
+token = "astro-mechanica"
+
+[[company]]
+name = "Stratolaunch"
+ats = "greenhouse"
+token = "stratolaunch"
+
+[[company]]
+name = "Mach Industries"
+ats = "greenhouse"
+token = "machindustries"
+
+[[company]]
+name = "K2 Space"
+ats = "greenhouse"
+token = "k2spacecorporation"
+
+[[company]]
+name = "Stoke Space"
+ats = "greenhouse"
+token = "stokespacetechnologies"
+
+[[company]]
+name = "Voyager Technologies"
+ats = "greenhouse"
+token = "voyagertechnologiesinc"
+
+[[company]]
+name = "CesiumAstro"
+ats = "lever"
+token = "CesiumAstro"
+
+[[company]]
+name = "Parallel Systems"
+ats = "greenhouse"
+token = "parallel"
+
+[[company]]
+name = "REGENT"
+ats = "ashby"
+token = "regent"
+
+[[company]]
+name = "JetZero"
+ats = "greenhouse"
+token = "jetzero"
+
+[[company]]
+name = "Star Catcher"
+ats = "greenhouse"
+token = "star-catcher"
+
+[[company]]
+name = "Kairos Power"
+ats = "greenhouse"
+token = "kairospower"
+
+[[company]]
+name = "Machina Labs"
+ats = "ashby"
+token = "machina-labs"
+
+[[company]]
+name = "HawkEye 360"
+ats = "greenhouse"
+token = "hawkeye360"
+
+[[company]]
+name = "Hadrian"
+ats = "ashby"
+token = "hadrian-automation"
+
+[[company]]
+name = "Northwood Space"
+ats = "ashby"
+token = "northwoodspace"
+
+[[company]]
+name = "True Anomaly"
+ats = "greenhouse"
+token = "trueanomalyinc"
+
+[[company]]
+name = "Pyka"
+ats = "lever"
+token = "pyka"
+
+[[company]]
+name = "Helion"
+ats = "ashby"
+token = "helion"
+
+[[company]]
+name = "Portal Space Systems"
+ats = "greenhouse"
+token = "portalspacesystems"
+
+[[company]]
+name = "Impulse Space"
+ats = "ashby"
+token = "impulse"
+
+[[company]]
+name = "Chaos Industries"
+ats = "greenhouse"
+token = "chaosindustries"
+
+[[company]]
+name = "Neros"
+ats = "greenhouse"
+token = "nerostechnologies"
+
+[[company]]
+name = "Reliable Robotics"
+ats = "ashby"
+token = "reliable-robotics"
+
+[[company]]
+name = "Turion Space"
+ats = "ashby"
+token = "turion-space"
+
+[[company]]
+name = "Observable Space"
+ats = "ashby"
+token = "observable-space"
+
+[[company]]
+name = "Skyryse"
+ats = "greenhouse"
+token = "skyryse"
+
+[[company]]
+name = "Katalyst Space"
+ats = "greenhouse"
+token = "katalyst"
+
+[[company]]
+name = "Momentus"
+ats = "greenhouse"
+token = "momentus"
+
+[[company]]
+name = "GITAI USA"
+ats = "greenhouse"
+token = "gitai"
+
+[[company]]
+name = "Natilus"
+ats = "workable"
+token = "natilus"
+
+[[company]]
+name = "Northrop Grumman"
+ats = "workday"
+token = "ngc|wd1|Northrop_Grumman_External_Site"
+
+[[company]]
+name = "RTX"
+ats = "workday"
+token = "globalhr|wd5|REC_RTX_Ext_Gateway"
+
+[[company]]
+name = "Blue Origin"
+ats = "workday"
+token = "blueorigin|wd5|BlueOrigin"
+
+[[company]]
+name = "Boeing"
+ats = "workday"
+token = "boeing|wd1|EXTERNAL_CAREERS"
+
+[[company]]
+name = "Castelion"
+ats = "greenhouse"
+token = "castelioncorporation"
+
+[[company]]
+name = "Firestorm Labs"
+ats = "gem"
+token = "firestorm"
+
+[[company]]
+name = "Odys Aviation"
+ats = "ashby"
+token = "odys-aviation"
+
+[[company]]
+name = "Swarm Aero"
+ats = "ashby"
+token = "swarmaero"
+
+[[company]]
+name = "Teledyne"
+ats = "workday"
+token = "flir|wd1|flircareers"
+
+[[company]]
+name = "Solar Turbines"
+ats = "workday"
+token = "cat|wd5|CaterpillarCareers"
+
+[[company]]
+name = "Leidos"
+ats = "workday"
+token = "leidos|wd5|External"
+
+[[company]]
+name = "Aevex Aerospace"
+ats = "greenhouse"
+token = "aevexaerospace"
+
+[[company]]
+name = "TrellisWare"
+ats = "greenhouse"
+token = "trelliswaretechnologies"
+
+[[company]]
+name = "HavocAI"
+ats = "ashby"
+token = "havocai"
+
+[[company]]
+name = "BAE Systems"
+ats = "phenom"
+token = "jobs.baesystems.com"
+
+[[company]]
+name = "Pacific Fusion"
+ats = "greenhouse"
+token = "pacificfusion"
+
+[[company]]
+name = "AV"
+ats = "workday"
+token = "avav|wd1|AVAV"

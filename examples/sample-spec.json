@@ -1,0 +1,10 @@
+{
+ "job_id": 0,
+ "company": "sample",
+ "education": ["state-u"],
+ "sections": [
+  {"title": "Experience", "entries": [{"id": "acme", "bullets": ["acme-test", "acme-tools"]}]},
+  {"title": "Projects", "entries": [{"id": "robot", "bullets": ["robot-arm", "robot-mass"]}]}
+ ],
+ "skills": ["sk-programming", "sk-design"]
+}

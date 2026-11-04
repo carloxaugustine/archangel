@@ -1,0 +1,30 @@
+# Your personal data. Never commit these.
+profile.toml
+answers.md
+config.toml
+resume-builder/facts.toml
+jobs.db
+jobs.db-*
+applications/*
+!applications/.gitkeep
+resumes/*
+!resumes/.gitkeep
+inbox/*
+!inbox/README.md
+context/*
+!context/.gitkeep
+logs/*
+!logs/.gitkeep
+scout/reports/*
+!scout/reports/.gitkeep
+scout/boards.md
+scout/sources.md
+scout/local.md
+dashboard/dist/
+dashboard/approvals.json
+.claude/settings.local.json
+.env
+# Build and system files
+__pycache__/
+*.pyc
+.DS_Store

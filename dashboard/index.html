@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Internship Control Room</title>
+<style>
+/* Layout: frosted top bar with a segmented control; each view is a calm column of large type and soft cards.
+   Applications open in a slide-in sheet; outreach is a one-card-at-a-time triage. */
+:root {
+  --bg: #f5f5f7; --surface: #ffffff; --surface-2: #fbfbfd; --line: rgba(0,0,0,.08); --fg: #1d1d1f; --fg-2: #6e6e73; --fg-3: #86868b;
+  --accent: #0071e3; --accent-soft: rgba(0,113,227,.1);
+  --green: #1d8f4a; --green-soft: rgba(29,143,74,.12); --amber: #b25e00; --amber-soft: rgba(255,149,0,.15);
+  --red: #d70015; --red-soft: rgba(215,0,21,.1); --violet: #6e3fd1; --violet-soft: rgba(110,63,209,.12);
+  --grey-soft: rgba(0,0,0,.05); --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 28px rgba(0,0,0,.06);
+  --nav: rgba(251,251,253,.72); --scrim: rgba(0,0,0,.28);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 18px; --ease: cubic-bezier(.32,.72,0,1);
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #000000; --surface: #1c1c1e; --surface-2: #151516; --line: rgba(255,255,255,.1); --fg: #f5f5f7; --fg-2: #a1a1a6; --fg-3: #86868b;
+  --accent: #2997ff; --accent-soft: rgba(41,151,255,.16);
+  --green: #30d158; --green-soft: rgba(48,209,88,.16); --amber: #ffb340; --amber-soft: rgba(255,179,64,.16);
+  --red: #ff6961; --red-soft: rgba(255,105,97,.16); --violet: #bf9bff; --violet-soft: rgba(191,155,255,.16);
+  --grey-soft: rgba(255,255,255,.08); --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.4);
+  --nav: rgba(22,22,23,.72); --scrim: rgba(0,0,0,.5); color-scheme: dark } }
+* { box-sizing: border-box; }
+html { -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.47; letter-spacing: -.01em; }
+button { font: inherit; color: inherit; }
+a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; border-radius: 10px; }
+
+/* nav */
+.nav { position: sticky; top: 0; z-index: 20; background: var(--nav); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
+.nav-inner { max-width: 1120px; margin: 0 auto; height: 56px; display: flex; align-items: center; gap: 16px;
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.brand { font-weight: 600; font-size: 17px; letter-spacing: -.02em; white-space: nowrap; }
+.seg { margin: 0 auto; display: flex; background: var(--grey-soft); border-radius: 10px; padding: 2px; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.seg button { border: 0; background: none; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--fg-2); cursor: pointer; white-space: nowrap;
+  transition: background .2s var(--ease), color .2s var(--ease); }
+.seg button[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.seg .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 6px; border-radius: 9px; background: var(--red); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.stamp { font-size: 12px; color: var(--fg-3); white-space: nowrap; }
+@media (max-width: 760px) { .stamp, .brand { display: none; } .seg { margin: 0; flex: 1; } }
+
+/* page */
+main { max-width: 1120px; margin: 0 auto; padding-block: 36px 80px; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.view { display: grid; gap: 40px; animation: rise .45s var(--ease) both; }
+.view[hidden] { display: none; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.hero h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.08; letter-spacing: -.035em; font-weight: 700; margin: 0; text-wrap: balance; }
+.hero p { font-size: clamp(17px, 2.2vw, 21px); color: var(--fg-2); margin: 10px 0 0; max-width: 60ch; letter-spacing: -.015em; }
+.sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.sec-h h2 { font-size: 24px; letter-spacing: -.025em; margin: 0; font-weight: 700; }
+.sec-h span { color: var(--fg-2); font-size: 14px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.stat { background: var(--surface); border-radius: var(--r); padding: 20px 22px; box-shadow: var(--shadow); }
+.stat b { display: block; font-size: 40px; line-height: 1; letter-spacing: -.04em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat span { display: block; margin-top: 8px; color: var(--fg-2); font-size: 14px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.card { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); }
+.tap { cursor: pointer; transition: transform .25s var(--ease), box-shadow .25s var(--ease); }
+.tap:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 14px 36px rgba(0,0,0,.1); }
+.tap:active { transform: scale(.99); }
+.due { padding: 18px 20px; display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; }
+.due .co { color: var(--fg-2); font-size: 13px; font-weight: 500; }
+.due .t { font-weight: 600; letter-spacing: -.015em; }
+.due .act { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.ring { width: 52px; height: 52px; grid-row: span 2; }
+.ring text { font-size: 13px; font-weight: 600; fill: var(--fg); }
+.empty { color: var(--fg-2); padding: 22px; text-align: center; background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); }
+
+/* list */
+.list { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.item { display: grid; grid-template-columns: 40px 1fr auto 14px; gap: 14px; align-items: center; padding: 14px 18px; cursor: pointer; transition: background .15s; }
+.item + .item { border-top: 1px solid var(--line); }
+.item:hover { background: var(--surface-2); }
+.logo { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; font-weight: 600; font-size: 16px; color: #fff; }
+.item .co { font-size: 13px; color: var(--fg-2); }
+.item .t { font-weight: 500; overflow-wrap: anywhere; }
+.item .n { font-size: 13px; color: var(--amber); margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.chev { color: var(--fg-3); }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.pill { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; letter-spacing: 0; }
+.pill.green { color: var(--green); background: var(--green-soft); } .pill.amber { color: var(--amber); background: var(--amber-soft); }
+.pill.red { color: var(--red); background: var(--red-soft); } .pill.blue { color: var(--accent); background: var(--accent-soft); }
+.pill.violet { color: var(--violet); background: var(--violet-soft); } .pill.grey { color: var(--fg-2); background: var(--grey-soft); }
+@media (max-width: 560px) { .item { grid-template-columns: 36px 1fr 12px; } .item .pills { grid-column: 2; justify-content: flex-start; } .item .chev { grid-row: 1; grid-column: 3; } }
+
+/* toolbar */
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.search { flex: 1; min-width: 220px; position: relative; }
+.search input { width: 100%; font: inherit; padding: 10px 14px 10px 36px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--fg-3); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--fg-2); }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* buttons */
+.btn { border: 0; cursor: pointer; border-radius: 980px; padding: 9px 18px; font-size: 14px; font-weight: 500; background: var(--grey-soft); transition: filter .15s, transform .15s; }
+.btn:hover { filter: brightness(.96); } .btn:active { transform: scale(.97); }
+.btn.primary { background: var(--accent); color: #fff; } .btn.go { background: var(--green); color: #fff; }
+.btn.big { padding: 13px 28px; font-size: 16px; }
+.link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font-size: 14px; }
+kbd { font-family: var(--font); font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); color: var(--fg-3); margin-left: 6px; }
+
+/* sheet */
+.scrim { position: fixed; inset: 0; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity .35s var(--ease); z-index: 30; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100%); background: var(--bg); z-index: 31; transform: translateX(102%);
+  transition: transform .45s var(--ease); display: grid; grid-template-rows: auto auto 1fr; box-shadow: -20px 0 60px rgba(0,0,0,.18);
+  padding-top: env(safe-area-inset-top, 0px); }
+.sheet.on { transform: none; }
+.sheet-head { padding: 22px 26px 12px; display: grid; gap: 8px; }
+.sheet-head .row { display: flex; gap: 12px; align-items: center; }
+.sheet-head h3 { margin: 0; font-size: 26px; letter-spacing: -.03em; line-height: 1.15; text-wrap: balance; }
+.sheet-head .co { color: var(--fg-2); font-weight: 500; }
+.close { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--grey-soft); cursor: pointer; display: grid; place-items: center; flex-shrink: 0; }
+.sheet-tabs { padding: 0 26px 12px; }
+.sheet-tabs .seg { margin: 0; width: max-content; max-width: 100%; }
+.sheet-body { overflow: auto; padding: 4px 26px 40px; display: grid; gap: 16px; align-content: start; }
+.pdf { width: 100%; height: min(78vh, 1000px); border: 0; border-radius: 14px; background: #fff; box-shadow: var(--shadow); }
+.qa { display: grid; gap: 10px; }
+.qa pre, .doc { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font); font-size: 14px; line-height: 1.6; margin: 0;
+  background: var(--surface); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; background: var(--surface); border-radius: 14px; padding: 16px 20px; box-shadow: var(--shadow); font-size: 14px; }
+.kv dt { color: var(--fg-2); } .kv dd { margin: 0; }
+.notice { background: var(--amber-soft); color: var(--fg); border-radius: 14px; padding: 14px 18px; font-size: 14px; }
+
+/* triage */
+.triage { display: grid; justify-items: center; gap: 18px; }
+.progress { width: min(560px, 100%); height: 4px; border-radius: 2px; background: var(--grey-soft); overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); transition: width .4s var(--ease); }
+.tcard { width: min(560px, 100%); padding: 28px; display: grid; gap: 16px; animation: rise .35s var(--ease) both; }
+.tcard .who { display: flex; gap: 14px; align-items: center; }
+.avatar { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 20px; color: #fff; flex-shrink: 0; }
+.tcard h3 { margin: 0; font-size: 22px; letter-spacing: -.025em; }
+.tcard .sub { color: var(--fg-2); font-size: 14px; }
+.tcard textarea { width: 100%; min-height: 128px; resize: vertical; font: inherit; font-size: 15px; line-height: 1.55; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--fg); padding: 14px 16px; }
+.tcard .meta { display: flex; justify-content: space-between; color: var(--fg-3); font-size: 13px; gap: 10px; flex-wrap: wrap; }
+.tcard .meta .over { color: var(--red); font-weight: 600; }
+.tactions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.done-state { text-align: center; padding: 48px 20px; }
+.done-state h3 { font-size: 28px; letter-spacing: -.03em; margin: 12px 0 6px; }
+.done-state p { color: var(--fg-2); margin: 0; }
+
+/* charts */
+.chart { padding: 18px; overflow-x: auto; } .chart svg { width: 100%; height: auto; display: block; }
+
+/* toast */
+.toast { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; z-index: 40;
+  background: rgba(29,29,31,.92); color: #fff; padding: 11px 20px; border-radius: 980px; font-size: 14px; font-weight: 500;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: all .35s var(--ease); pointer-events: none; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.contacts { display: grid; gap: 2px; border: 1px solid var(--line); border-radius: 14px; padding: 8px; background: var(--surface-2); }
+.contacts-h { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 8px 6px; font-weight: 600; font-size: 14px; }
+.contacts-h small { color: var(--fg-3); font-weight: 400; font-size: 12px; }
+.contacts-sub { padding: 10px 8px 4px; color: var(--fg-3); font-size: 12px; }
+.contact { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 10px; border: 0; background: none;
+  color: var(--fg); font: inherit; text-align: left; cursor: pointer; text-decoration: none; }
+.contact:hover:not(:disabled) { background: var(--grey-soft); text-decoration: none; }
+.contact:disabled { cursor: default; } .contact.here { background: var(--accent-soft); }
+.contact .cn { display: grid; min-width: 0; } .contact .cn b { font-size: 14px; font-weight: 600; }
+.contact .cn small { color: var(--fg-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact .go-arrow { color: var(--fg-3); }
+.avatar.sm { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 600; }
+.avatar.find-ic { background: var(--grey-soft); color: var(--fg-2); font-size: 18px; }
+.radar { padding: 22px 24px; display: grid; gap: 14px; }
+.radar .who { display: flex; gap: 14px; align-items: center; }
+.radar .avatar { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 600; flex: none; }
+.radar h3 { margin: 0; font-size: 20px; letter-spacing: -.02em; } .radar .sub { color: var(--fg-2); font-size: 14px; }
+.radar .why { color: var(--fg-2); font-size: 13px; background: var(--amber-soft); border-radius: 10px; padding: 8px 12px; }
+.radar textarea { width: 100%; min-height: 96px; resize: vertical; font: inherit; font-size: 15px; line-height: 1.55; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--fg); padding: 12px 14px; }
+.radar .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.radar .count { color: var(--fg-3); font-size: 13px; } .radar .count.over { color: var(--red); font-weight: 600; }
+.radar .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.week { display: flex; gap: 6px; align-items: center; color: var(--fg-2); font-size: 13px; }
+.week i { width: 12px; height: 12px; border-radius: 50%; background: var(--grey-soft); display: inline-block; }
+.week i.sent { background: var(--green); } .week i.skip { background: var(--fg-3); opacity: .5; } .week i.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Hover preview of what was submitted (fine pointers only; tap/click still opens the sheet). */
+.peek { position: fixed; z-index: 25; width: min(400px, calc(100vw - 32px)); max-height: min(calc(100vh - 96px), 620px); overflow: auto; overscroll-behavior: contain;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 2px 6px rgba(0,0,0,.08), 0 18px 48px rgba(0,0,0,.18);
+  padding: 16px 18px 12px; font-size: 13px; line-height: 1.45; opacity: 0; transform: translateY(4px) scale(.985); pointer-events: none;
+  transition: opacity .16s var(--ease), transform .16s var(--ease); }
+.peek.on { opacity: 1; transform: none; pointer-events: auto; }
+.peek h4 { margin: 2px 0 8px; font-size: 15px; letter-spacing: -.015em; line-height: 1.25; }
+.peek .co { color: var(--fg-2); font-size: 12px; font-weight: 500; }
+.peek .pills { justify-content: flex-start; margin-bottom: 10px; }
+.peek .basis { color: var(--fg-2); font-style: italic; margin: 0 0 8px; }
+.peek .lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); margin: 12px 0 6px; }
+.peek dl { display: grid; grid-template-columns: minmax(110px, 42%) 1fr; gap: 5px 12px; margin: 0; }
+.peek dt { color: var(--fg-2); overflow-wrap: anywhere; } .peek dd { margin: 0; overflow-wrap: anywhere; font-weight: 500; }
+.peek dd.empty-a { color: var(--fg-3); font-weight: 400; font-style: italic; }
+.peek .essay { grid-column: 1 / -1; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-top: 4px;
+  display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; font-weight: 400; }
+.peek .essay-q { grid-column: 1 / -1; color: var(--fg-2); margin-top: 6px; }
+.peek .txt { white-space: pre-wrap; margin: 0; color: var(--fg); }
+.peek .foot { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--fg-3); font-size: 12px; display: flex; justify-content: space-between; gap: 8px; }
+.qa dl.kv { grid-template-columns: minmax(140px, 38%) 1fr; } .qa dd.empty-a { color: var(--fg-3); font-style: italic; }
+.qa details summary { cursor: pointer; color: var(--fg-2); font-size: 13px; margin: 4px 0 8px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* approve */
+.acards { display: grid; gap: 18px; }
+.acard { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 22px; display: grid; gap: 16px; }
+.acard .top { display: flex; gap: 14px; align-items: center; }
+.acard .top .meta { min-width: 0; flex: 1; }
+.acard h3 { margin: 0; font-size: 20px; letter-spacing: -.02em; line-height: 1.2; }
+.acard .co { color: var(--fg-2); font-size: 14px; }
+.acard .links { display: flex; gap: 8px; flex-wrap: wrap; }
+.acard .links a { font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); }
+.acard .why { color: var(--fg-2); font-size: 14px; margin: 0; }
+.qa { display: grid; grid-template-columns: minmax(140px, 34%) 1fr; gap: 6px 16px; font-size: 13px; margin: 0; }
+.qa dt { color: var(--fg-2); } .qa dd { margin: 0; overflow-wrap: anywhere; }
+.need { display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: var(--amber-soft); }
+.need label { display: grid; gap: 4px; font-size: 13px; font-weight: 500; }
+.need input, .need textarea { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.need .hint { font-weight: 400; color: var(--fg-2); font-size: 12px; }
+.acard .acts { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.acard .state { font-size: 13px; color: var(--fg-2); }
+.acard.done { opacity: .72; }
+details.more summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+@media (max-width: 600px) { .qa { grid-template-columns: 1fr; } .qa dd { margin-bottom: 6px; } }
+</style>
+</head>
+<body>
+<header class="nav"><div class="nav-inner">
+  <div class="brand">Control Room</div>
+  <div class="seg" role="tablist" id="tabs">
+    <button role="tab" data-tab="today" aria-selected="true">Today</button>
+    <button role="tab" data-tab="approve">Approve<span class="badge" id="abadge" hidden></span></button>
+    <button role="tab" data-tab="apps">Applications</button>
+    <button role="tab" data-tab="outreach">Outreach<span class="badge" id="obadge" hidden></span></button>
+    <button role="tab" data-tab="pipeline">Pipeline</button>
+    <button role="tab" data-tab="queue">Queue</button>
+  </div>
+  <div class="stamp" id="stamp">Loading…</div>
+</div></header>
+
+<main>
+  <section class="view" id="today">
+    <div class="hero"><h1 id="greet">Good morning.</h1><p id="summary">Loading your applications…</p></div>
+    <div class="stats" id="stats"></div>
+    <div><div class="sec-h"><h2>Radar contact</h2><span>One recruiter or hiring manager a day. Not asking for anything, just on their radar.</span></div><div id="radar"></div></div>
+    <div><div class="sec-h"><h2>Reach out now</h2><span>Inside the 48-hour window after applying</span></div><div class="cards" id="due"></div></div>
+    <div><div class="sec-h"><h2>Needs you</h2><span>The agent stopped on these</span></div><div class="list" id="needs"></div></div>
+    <div><div class="sec-h"><h2>Sent today</h2><span>Each reached the company's confirmation page</span></div><div class="list" id="sent"></div></div>
+  </section>
+
+  <section class="view" id="approve" hidden>
+    <div class="hero"><h1>Approve</h1><p>Applications the agent has prepared but will not send until you say so. Check the resume and answers, fill in anything it could not, then approve. The agent submits approved ones on its next run, best fit first, up to 20 a day spaced a few minutes apart, with Chrome open on your Mac.</p></div>
+    <div class="acards" id="alist"></div>
+  </section>
+
+  <section class="view" id="apps" hidden>
+    <div class="hero"><h1>Applications</h1><p>Every application, the resume that went with it, and every answer given.</p></div>
+    <div class="toolbar">
+      <label class="search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+        <input id="q" type="search" placeholder="Search company or role" aria-label="Search applications"></label>
+      <div class="chips" id="fstatus"></div>
+      <div class="chips" id="fwho"></div>
+    </div>
+    <div class="list" id="applist"></div>
+  </section>
+
+  <section class="view" id="outreach" hidden>
+    <div class="hero"><h1>Outreach</h1><p>One person at a time. Edit the note if you like, then Greenlight: the note is copied and LinkedIn opens so you can paste and send it yourself.</p></div>
+    <div class="triage" id="triage"></div>
+  </section>
+
+  <section class="view" id="pipeline" hidden>
+    <div class="hero"><h1>Pipeline</h1><p>Where every application stands.</p></div>
+    <div class="card chart"><svg id="chart-all" role="img" aria-label="All applications"></svg></div>
+    <div class="card chart"><svg id="chart-pipe" role="img" aria-label="Agent pipeline"></svg></div>
+  </section>
+
+  <section class="view" id="queue" hidden>
+    <div class="hero"><h1>Queue</h1><p>The best open postings the agent hasn't applied to yet.</p></div>
+    <div class="list" id="qlist"></div>
+  </section>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet" aria-hidden="true" aria-label="Application details">
+  <div class="sheet-head" id="sheet-head"></div>
+  <div class="sheet-tabs"><div class="seg" role="tablist" id="sheet-tabs"></div></div>
+  <div class="sheet-body" id="sheet-body"></div>
+</aside>
+<div class="peek" id="peek" role="tooltip" aria-hidden="true"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (v == null || v === false) continue; if (k === 'class') e.className = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? '' : v); } for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c))); return e; };
+const svgEl = (tag, attrs = {}, text) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (text != null) e.textContent = text; return e; };
+const fmtDate = s => s ? new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+const HUES = ['#0071e3', '#34a853', '#ff9f0a', '#af52de', '#ff375f', '#5ac8fa', '#a2845e', '#30b0c7'];
+const hue = s => HUES[[...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % HUES.length];
+const initials = s => String(s).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+
+let DATA, current = null, sheetTab = 'resume', listCache = [];
+let toastTimer;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2200); }
+
+/* ---------- decisions (this browser only) ---------- */
+const DECIDED_KEY = 'outreach-decisions-v1', EDIT_KEY = 'outreach-edits-v1';
+const load = k => { try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch { return {}; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const decisions = load(DECIDED_KEY), edits = load(EDIT_KEY);
+const decide = (key, value) => { decisions[key] = { value, at: new Date().toISOString() }; save(DECIDED_KEY, decisions); };
+const undo = key => { delete decisions[key]; save(DECIDED_KEY, decisions); };
+
+/* ---------- status helpers ---------- */
+const STATUS = { submitted: ['Submitted', 'green'], needs_user: ['Needs you', 'amber'], skipped: ['Skipped', 'grey'], filled: ['Filled, not sent', 'blue'],
+  oa: ['Assessment', 'violet'], interview: ['Interview', 'violet'], offer: ['Offer', 'green'], rejected: ['Rejected', 'red'], agent: ['Agent', 'blue'], user: ['You', 'grey'] };
+const pill = k => { const [label, tone] = STATUS[k] || [k, 'grey']; return el('span', { class: `pill ${tone}` }, label); };
+const WINDOW_H = 48;
+const windowLeft = a => a.submitted_at ? WINDOW_H - (Date.now() - new Date(a.submitted_at)) / 36e5 : null;
+const firstName = n => (n || '').trim().split(/\s+/)[0] || '[Name]';
+const isAlum = p => (p.alum || '').toLowerCase() === 'yes';
+const me = () => (typeof DATA !== 'undefined' && DATA && DATA.me) || { first: '', school: '' };
+const personKey = (a, p) => `${a.id}:${p ? p.name : '_self'}`;
+const targets = a => { const ps = (a.outreach?.people || []).slice().sort((x, y) => isAlum(y) - isAlum(x)); return ps.length ? ps : [null]; };
+const undecided = a => targets(a).some(p => !decisions[personKey(a, p)]);
+// LinkedIn people searches you open yourself (the agent never opens LinkedIn).
+const peopleSearch = q => `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(q)}&origin=GLOBAL_SEARCH_HEADER`;
+const alumniURL = a => peopleSearch(`"${me().school}" "${a.company}"`);
+const teamPhrase = a => ((a.outreach?.who || '').match(/[Ss]earch(?: LinkedIn for)? "([^"]+)"/) || [])[1] || `${a.company} engineer`;
+const teamURL = a => peopleSearch(teamPhrase(a));
+const searchURL = (a, p) => `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${p.name} ${a.company}`)}`;
+const noteFor = (a, p) => edits[personKey(a, p)] ?? (p && a.outreach?.by_person?.[p.name]) ?? (a.outreach?.note || '').replace('[Name]', p ? firstName(p.name) : '[Name]');
+
+/* ---------- navigation ---------- */
+function show(id) {
+  hidePeek();
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
+  document.querySelectorAll('main > .view').forEach(s => s.hidden = s.id !== id);
+  history.replaceState(null, '', '#' + id);
+  if (id === 'outreach') renderTriage();
+  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+}
+
+/* ---------- Radar contact (one a day) ---------- */
+const radarKey = r => `radar:${r.date}`;
+const localDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function radarWeek() {
+  const byDate = Object.fromEntries((DATA.radar || []).map(r => [r.date, r])), today = localDate(new Date()), dots = [];
+  let streak = 0, counting = true;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i); const k = localDate(d), r = byDate[k], dec = r && decisions[radarKey(r)];
+    const cls = dec?.value === 'greenlit' ? 'sent' : dec ? 'skip' : '';
+    dots.unshift(el('i', { class: `${cls}${k === today ? ' today' : ''}`, title: `${k}: ${r ? (cls === 'sent' ? 'sent' : cls ? 'skipped' : 'not sent') : 'no pick'}` }));
+    if (counting) { if (cls === 'sent') streak++; else if (k !== today) counting = false; }
+  }
+  return el('div', { class: 'week' }, ...dots, el('span', { style: 'margin-left:6px' }, streak ? `${streak}-day streak` : 'Last 7 days'));
+}
+function renderRadar() {
+  const host = $('radar'), list = DATA.radar || [], today = localDate(new Date());
+  const r = list.find(x => x.date === today && !decisions[radarKey(x)]) || list.find(x => !decisions[radarKey(x)]);
+  if (!r) {
+    const sentToday = list.find(x => x.date === today);
+    host.replaceChildren(el('div', { class: 'card radar' }, el('div', { class: 'row' },
+      el('div', {}, el('b', {}, sentToday ? 'Done for today.' : 'No pick yet today.'), el('div', { class: 'sub', style: 'color:var(--fg-2);font-size:14px' }, 'The next one arrives with tomorrow morning\'s run.')), radarWeek())));
+    return;
+  }
+  const p = r.person, key = radarKey(r), first = p ? firstName(p.name) : null;
+  const ta = el('textarea', { 'aria-label': 'Radar note', maxlength: 600, oninput: e => { edits[key] = e.target.value; save(EDIT_KEY, edits); upd(); } });
+  ta.value = edits[key] ?? (r.note || '').replace('[Name]', first || '[Name]');
+  const count = el('span', { class: 'count' }); const upd = () => { count.textContent = `${ta.value.length} / 300`; count.classList.toggle('over', ta.value.length > 300); }; upd();
+  const url = p ? peopleSearch(`${p.name} ${r.company}`) : peopleSearch(`"${r.company}" university recruiter`);
+  const send = async () => {
+    try { await navigator.clipboard.writeText(ta.value); toast('Note copied. Paste it into the LinkedIn invite.'); } catch { ta.select(); toast('Select and copy the note, then paste it into LinkedIn.'); }
+    window.open(url, '_blank', 'noopener'); decide(key, 'greenlit'); renderRadar();
+  };
+  const skip = () => { decide(key, 'skipped'); toast('Skipped today\'s radar contact'); renderRadar(); };
+  host.replaceChildren(el('div', { class: 'card radar' },
+    el('div', { class: 'who' }, el('div', { class: 'avatar', style: `background:${hue(p ? p.name : r.company)}` }, p ? initials(p.name) : '?'),
+      el('div', { style: 'min-width:0' }, el('h3', {}, p ? p.name : `A recruiter at ${r.company}`),
+        el('div', { class: 'sub' }, p ? `${p.title} · ${r.company}` : 'No name found by search: Copy & open lists their recruiters; pick one.'),
+        r.date !== today ? el('div', { class: 'sub' }, `From ${fmtDate(r.date + 'T12:00')}, not sent yet`) : null)),
+    r.why ? el('div', { class: 'why' }, r.why) : null,
+    ta,
+    el('div', { class: 'row' }, el('span', {}, count, p && /^https?:\/\//.test(p.url) ? el('a', { href: p.url, target: '_blank', rel: 'noopener noreferrer', style: 'margin-left:12px;font-size:13px' }, 'Where they were found ↗') : null), radarWeek()),
+    el('div', { class: 'btns' }, el('button', { class: 'btn primary', onclick: send }, 'Copy & open LinkedIn'), el('button', { class: 'btn', onclick: skip }, 'Skip today'))));
+}
+
+/* ---------- Today ---------- */
+function ring(hours) {
+  const r = 22, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, hours / WINDOW_H));
+  const color = hours < 12 ? 'var(--amber)' : 'var(--accent)';
+  const s = svgEl('svg', { class: 'ring', viewBox: '0 0 52 52', role: 'img', 'aria-label': `${Math.ceil(hours)} hours left` });
+  s.append(svgEl('circle', { cx: 26, cy: 26, r, fill: 'none', stroke: 'var(--grey-soft)', 'stroke-width': 5 }));
+  s.append(svgEl('circle', { cx: 26, cy: 26, r, fill: 'none', stroke: color, 'stroke-width': 5, 'stroke-linecap': 'round',
+    'stroke-dasharray': `${c * f} ${c}`, transform: 'rotate(-90 26 26)' }));
+  s.append(svgEl('text', { x: 26, y: 30, 'text-anchor': 'middle' }, `${Math.ceil(hours)}h`));
+  return s;
+}
+function row(a) {
+  const status = a.status === 'submitted' && a.outcome ? a.outcome : a.status;
+  const node = el('div', { class: 'item', role: 'button', tabindex: 0, onclick: () => openSheet(a.id), onkeydown: e => { if (e.key === 'Enter') openSheet(a.id); } },
+    el('div', { class: 'logo', style: `background:${hue(a.company)}` }, initials(a.company)),
+    el('div', { style: 'min-width:0' }, el('div', { class: 'co' }, a.company, a.submitted_at ? ` · ${fmtDate(a.submitted_at)}` : ''), el('div', { class: 't' }, a.title),
+      a.status === 'needs_user' && a.note ? el('div', { class: 'n' }, a.note) : null),
+    el('div', { class: 'pills' }, pill(status), a.applied_by ? pill(a.applied_by) : null),
+    el('span', { class: 'chev', 'aria-hidden': 'true' }, '›'));
+  attachPeek(node, a);
+  return node;
+}
+function renderToday() {
+  const apps = DATA.applications, sub = apps.filter(a => a.status === 'submitted');
+  const sentToday = sub.filter(a => a.applied_by === 'agent' && a.recent), needs = apps.filter(a => a.status === 'needs_user');
+  const due = apps.filter(a => a.outreach && windowLeft(a) > 0 && undecided(a)).sort((x, y) => windowLeft(x) - windowLeft(y));
+  const h = new Date().getHours();
+  $('greet').textContent = `${h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'}${me().first ? ', ' + me().first : ''}.`;
+  const bits = [due.length ? `${due.length} message${due.length > 1 ? 's' : ''} to send` : 'No messages waiting',
+    needs.length ? `${needs.length} application${needs.length > 1 ? 's' : ''} need${needs.length > 1 ? '' : 's'} you` : 'nothing needs you',
+    `${sentToday.length} sent today`];
+  $('summary').textContent = bits.join(' · ') + '.';
+  const stats = [['Applied', sub.length], ['Interviews', sub.filter(a => a.reached.includes('interview')).length], ['Sent today', sentToday.length], ['Needs you', needs.length]];
+  $('stats').replaceChildren(...stats.map(([k, v]) => el('div', { class: 'stat' }, el('b', {}, v), el('span', {}, k))));
+  $('due').replaceChildren(...(due.length ? due.map(a => el('div', { class: 'card due tap', role: 'button', tabindex: 0, onclick: () => { show('outreach'); focusTriage(a.id); },
+      onkeydown: e => { if (e.key === 'Enter') { show('outreach'); focusTriage(a.id); } } },
+    el('div', { class: 'co' }, a.company), ring(windowLeft(a)), el('div', { class: 't' }, a.title),
+    el('div', { class: 'act' }, el('span', { class: 'co' }, `${targets(a)[0] ? targets(a).length + ' contact' + (targets(a).length > 1 ? 's' : '') : 'Find alumni'}`),
+      el('span', { class: 'link' }, 'Write message ›')))) : [el('div', { class: 'empty' }, 'No applications are waiting on a message.')]));
+  $('needs').replaceChildren(...(needs.length ? needs.map(row) : [el('div', { class: 'empty' }, 'Nothing is waiting on you.')]));
+  $('sent').replaceChildren(...(sentToday.length ? sentToday.map(row) : [el('div', { class: 'empty' }, 'Nothing was sent in the last day.')]));
+  const n = due.length; $('obadge').hidden = !n; $('obadge').textContent = n;
+}
+
+/* ---------- Applications ---------- */
+const FSTATUS = [['', 'All'], ['submitted', 'Submitted'], ['needs_user', 'Needs you'], ['skipped', 'Skipped']];
+const FWHO = [['', 'Anyone'], ['agent', 'Agent'], ['user', 'You']];
+let fstatus = '', fwho = '';
+function chips(host, opts, get, set) {
+  $(host).replaceChildren(...opts.map(([v, label]) => el('button', { class: 'chip', 'aria-pressed': String(get() === v), onclick: () => { set(v); chips(host, opts, get, set); renderApps(); } }, label)));
+}
+function renderApps() {
+  const q = $('q').value.toLowerCase();
+  listCache = DATA.applications.filter(a => (!fstatus || a.status === fstatus) && (!fwho || a.applied_by === fwho) && (!q || `${a.company} ${a.title}`.toLowerCase().includes(q)));
+  $('applist').replaceChildren(...(listCache.length ? listCache.map(row) : [el('div', { class: 'empty' }, 'No applications match.')]));
+}
+
+/* ---------- Hover preview: what was submitted ---------- */
+const canHover = matchMedia('(hover: hover) and (pointer: fine)');
+let peekShow, peekHide, peekId = null;
+const linkify = t => String(t).split(/(https?:\/\/\S+)/).map((p, i) => i % 2 ? el('a', { href: p, target: '_blank', rel: 'noopener noreferrer' }, p.replace(/^https?:\/\//, '')) : p);
+function answerList(ans) {
+  const dl = el('dl', {});
+  for (const it of ans.items) {
+    if (it.long) dl.append(el('div', { class: 'essay-q' }, it.q), el('div', { class: 'essay' }, it.a));
+    else if (!it.q) dl.append(el('dd', { style: 'grid-column:1/-1' }, linkify(it.a)));
+    else dl.append(el('dt', {}, it.q), el('dd', { class: it.empty ? 'empty-a' : null }, linkify(it.a)));
+  }
+  return dl;
+}
+function peekBody(a) {
+  const status = a.status === 'submitted' && a.outcome ? a.outcome : a.status, out = [];
+  out.push(el('div', { class: 'co' }, a.company, a.submitted_at ? ` · applied ${fmtDate(a.submitted_at)}` : a.location ? ` · ${a.location}` : ''),
+    el('h4', {}, a.title), el('div', { class: 'pills' }, pill(status), a.applied_by ? pill(a.applied_by) : null));
+  if (a.status === 'needs_user' && a.note) out.push(el('div', { class: 'lbl' }, 'What it needs now'), el('p', { class: 'txt' }, a.note));
+  if (a.resume) out.push(el('div', { class: 'lbl' }, 'Resume'), el('div', {}, el('a', { href: a.resume, target: '_blank' },
+    a.status === 'submitted' ? 'Tailored PDF that was uploaded ↗' : 'Tailored PDF (not sent yet) ↗')));
+  if (a.answers?.items.length) {
+    out.push(el('div', { class: 'lbl' }, a.status === 'submitted' ? 'What was submitted' : 'What was filled'));
+    if (a.answers.basis) out.push(el('p', { class: 'basis' }, a.answers.basis.replace(/:$/, '')));
+    out.push(answerList(a.answers));
+  } else if (a.blockers) {
+    out.push(el('div', { class: 'lbl' }, 'Blocked on'), el('p', { class: 'txt' }, a.blockers.replace(/\*\*/g, '').replace(/^- /gm, '• ')));
+  } else if (a.applied_by === 'user') {
+    out.push(el('div', { class: 'lbl' }, 'Answers'), el('p', { class: 'txt' }, 'You filled this application yourself, so nothing was logged.'));
+  }
+  if (a.log_outcome) out.push(el('div', { class: 'lbl' }, 'Outcome'), el('p', { class: 'txt' }, a.log_outcome));
+  out.push(el('div', { class: 'foot' }, el('span', {}, 'Click for resume, posting and outreach'), a.url ? el('a', { href: a.url, target: '_blank', rel: 'noopener' }, 'Posting ↗') : null));
+  return out;
+}
+function placePeek(anchor, x) {
+  const p = $('peek'), r = anchor.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight, vw = innerWidth, vh = innerHeight;
+  const navB = document.querySelector('.nav').getBoundingClientRect().bottom + 8, edge = 16;
+  // Beside the list when the window is wide; otherwise over the right half of the list (pills side), so titles stay readable.
+  const left = r.right + 12 + w <= vw - edge ? r.right + 12 : Math.max(edge, Math.min(Math.max((x ?? r.left) + 28, r.left + r.width * .45), vw - w - edge));
+  const top = Math.max(navB, Math.min(r.top - 12, vh - h - edge));
+  p.style.left = `${left}px`; p.style.top = `${top}px`;
+}
+function showPeek(a, anchor, x) {
+  const p = $('peek');
+  if (peekId !== a.id) { p.replaceChildren(...peekBody(a)); p.scrollTop = 0; peekId = a.id; }
+  placePeek(anchor, x); p.classList.add('on'); p.setAttribute('aria-hidden', 'false');
+}
+function hidePeek() { clearTimeout(peekShow); $('peek').classList.remove('on'); $('peek').setAttribute('aria-hidden', 'true'); peekId = null; }
+function attachPeek(node, a) {
+  let x;
+  node.addEventListener('mousemove', e => { x = e.clientX; });
+  node.addEventListener('mouseenter', e => {
+    if (!canHover.matches || current != null) return;
+    x = e.clientX; clearTimeout(peekHide); clearTimeout(peekShow);
+    peekShow = setTimeout(() => showPeek(a, node, x), $('peek').classList.contains('on') ? 60 : 280);
+  });
+  node.addEventListener('mouseleave', () => { clearTimeout(peekShow); peekHide = setTimeout(hidePeek, 160); });
+  node.addEventListener('click', hidePeek);
+}
+
+/* ---------- Sheet ---------- */
+function openSheet(id, tab) {
+  current = id; const a = DATA.applications.find(x => x.id === id); if (!a) return;
+  sheetTab = tab || (a.resume ? 'resume' : a.log ? 'answers' : 'posting');
+  $('sheet-head').replaceChildren(
+    el('div', { class: 'row' }, el('div', { class: 'logo', style: `background:${hue(a.company)}` }, initials(a.company)),
+      el('div', { class: 'co' }, a.company, a.location ? ` · ${a.location}` : ''),
+      el('button', { class: 'close', 'aria-label': 'Close', onclick: closeSheet }, '✕')),
+    el('h3', {}, a.title),
+    el('div', { class: 'pills', style: 'justify-content:flex-start' }, pill(a.status), a.outcome ? pill(a.outcome) : null, a.applied_by ? pill(a.applied_by) : null,
+      a.submitted_at ? el('span', { class: 'pill grey' }, `Applied ${fmtDate(a.submitted_at)}`) : null));
+  const tabs = [['resume', 'Resume'], ['answers', 'Answers'], ['outreach', 'Outreach'], ['posting', 'Posting']];
+  $('sheet-tabs').replaceChildren(...tabs.map(([k, label]) => el('button', { role: 'tab', 'aria-selected': String(sheetTab === k), onclick: () => { sheetTab = k; openSheet(id, k); } }, label)));
+  $('sheet-body').replaceChildren(...sheetBody(a));
+  $('sheet').classList.add('on'); $('scrim').classList.add('on'); $('sheet').setAttribute('aria-hidden', 'false');
+}
+function closeSheet() { $('sheet').classList.remove('on'); $('scrim').classList.remove('on'); $('sheet').setAttribute('aria-hidden', 'true'); current = null; }
+function sheetBody(a) {
+  const out = [];
+  if (a.status === 'needs_user' && a.note) out.push(el('div', { class: 'notice' }, el('b', {}, 'What it needs: '), a.note));
+  if (sheetTab === 'resume') {
+    if (a.resume) out.push(el('div', { class: 'sec-h' }, el('span', {}, a.status === 'submitted' ? 'This is the exact PDF that was uploaded.' : 'Prepared for this application, not sent yet.'),
+      el('a', { href: a.resume, target: '_blank' }, 'Open in new tab ↗')), el('iframe', { class: 'pdf', src: a.resume, title: 'Resume PDF' }));
+    else out.push(el('div', { class: 'empty' }, a.applied_by === 'user' ? 'You applied to this one yourself, so there is no record of which resume was used.' : 'No tailored resume was built for this application.'));
+  }
+  if (sheetTab === 'answers') out.push(a.answers?.items.length ? el('div', { class: 'qa' }, a.answers.basis ? el('p', { class: 'basis', style: 'margin:0;color:var(--fg-2)' }, a.answers.basis.replace(/:$/, '')) : null,
+      Object.assign(answerList(a.answers), { className: 'kv' }), el('details', {}, el('summary', {}, 'Full run log'), el('pre', {}, a.log))) :
+    a.log ? el('div', { class: 'qa' }, el('pre', {}, a.log)) : el('div', { class: 'empty' }, a.applied_by === 'user' ? 'You filled this application yourself.' : 'No answers were logged.'));
+  if (sheetTab === 'outreach') {
+    if (!a.outreach) out.push(el('div', { class: 'empty' }, 'No outreach draft for this application.'));
+    else out.push(el('div', { class: 'qa' }, el('div', { class: 'doc' }, a.outreach.note || ''),
+      el('div', { class: 'toolbar' }, el('button', { class: 'btn primary', onclick: () => { show('outreach'); closeSheet(); focusTriage(a.id); } }, 'Open in Outreach'),
+        el('a', { class: 'btn', href: alumniURL(a), target: '_blank', rel: 'noopener noreferrer' }, `Alumni at ${a.company} ↗`),
+        el('a', { class: 'btn', href: teamURL(a), target: '_blank', rel: 'noopener noreferrer', title: teamPhrase(a) }, 'Engineers on this team ↗'))));
+  }
+  if (sheetTab === 'posting') {
+    out.push(el('dl', { class: 'kv' }, el('dt', {}, 'Category'), el('dd', {}, a.category || '—'), el('dt', {}, 'Match score'), el('dd', {}, a.score ?? '—'),
+      el('dt', {}, 'Posting'), el('dd', {}, a.url ? el('a', { href: a.url, target: '_blank', rel: 'noopener' }, 'Open the job posting ↗') : '—')));
+    if (a.description) out.push(el('div', { class: 'doc' }, a.description));
+  }
+  return out;
+}
+function step(dir) {
+  if (current == null) return; const pool = listCache.length ? listCache : DATA.applications;
+  const i = pool.findIndex(a => a.id === current); const next = pool[(i + dir + pool.length) % pool.length]; if (next) openSheet(next.id, sheetTab);
+}
+
+/* ---------- Outreach triage ---------- */
+let triageFocus = null;
+function triageItems() {
+  // Least time left first; expired windows after the live ones, freshest of those first.
+  const urgency = a => { const h = windowLeft(a); return h == null ? 1e9 : h > 0 ? h : 1e5 - h; };
+  const apps = DATA.applications.filter(a => a.outreach).sort((x, y) => urgency(x) - urgency(y));
+  const items = []; apps.forEach(a => targets(a).forEach(p => items.push({ a, p, key: personKey(a, p) })));
+  return items;
+}
+const SEARCHES = a => [
+  ['Alumni', `at ${a.company}`, alumniURL(a)],
+  ['Engineers on this team', teamPhrase(a), teamURL(a)],
+  ['Former interns', `${a.company} intern`, peopleSearch(`"${a.company}" intern`)],
+  ['University recruiters', `${a.company} university recruiting`, peopleSearch(`"${a.company}" university recruiter`)],
+];
+function contactsPanel(a, cur) {
+  const people = targets(a).filter(Boolean);
+  const state = p => { const d = decisions[personKey(a, p)]; return d ? (d.value === 'greenlit' ? ['Sent', 'green'] : ['Skipped', 'grey']) : null; };
+  const rows = people.map(p => {
+    const st = state(p), here = cur && cur.name === p.name;
+    return el('button', { class: `contact${here ? ' here' : ''}`, disabled: here || !!st, title: here ? 'Showing now' : st ? st[0] : `Show ${p.name}`,
+        onclick: () => { triageFocus = personKey(a, p); renderTriage(); } },
+      el('span', { class: 'avatar sm', style: `background:${hue(p.name)}` }, initials(p.name)),
+      el('span', { class: 'cn' }, el('b', {}, p.name), el('small', {}, p.title)),
+      isAlum(p) ? el('span', { class: 'pill violet' }, 'Alum') : null,
+      here ? el('span', { class: 'pill blue' }, 'Now') : st ? el('span', { class: `pill ${st[1]}` }, st[0]) : el('span', { class: 'go-arrow', 'aria-hidden': 'true' }, '›'));
+  });
+  const finds = SEARCHES(a).map(([label, sub, url]) => el('a', { class: 'contact find', href: url, target: '_blank', rel: 'noopener noreferrer' },
+    el('span', { class: 'avatar sm find-ic', 'aria-hidden': 'true' }, '⌕'), el('span', { class: 'cn' }, el('b', {}, label), el('small', {}, sub)), el('span', { class: 'go-arrow', 'aria-hidden': 'true' }, '↗')));
+  return el('div', { class: 'contacts' },
+    el('div', { class: 'contacts-h' }, el('span', {}, `Contacts at ${a.company}`), el('small', {}, `${people.length} named · ${finds.length} LinkedIn searches`)),
+    ...rows, el('div', { class: 'contacts-sub' }, 'Find more on LinkedIn (opens a search; you pick the person)'), ...finds);
+}
+function focusTriage(appId) { triageFocus = appId; renderTriage(); }
+function renderTriage() {
+  const items = triageItems(), open = items.filter(i => !decisions[i.key]);
+  let it = triageFocus != null ? open.find(i => i.key === triageFocus) || open.find(i => i.a.id === triageFocus) : null; if (!it) { it = open[0]; triageFocus = null; }
+  const doneN = items.length - open.length;
+  const host = $('triage');
+  const progress = el('div', { class: 'progress', 'aria-label': `${doneN} of ${items.length} decided` }, el('i', { style: `width:${items.length ? 100 * doneN / items.length : 100}%` }));
+  if (!it) {
+    host.replaceChildren(progress, el('div', { class: 'card done-state', style: 'width:min(560px,100%)' }, el('div', { style: 'font-size:44px' }, '✓'),
+      el('h3', {}, 'All caught up.'), el('p', {}, items.length ? `You've decided on all ${items.length} contacts. New drafts arrive with each morning's applications.` : 'No outreach drafts yet.'),
+      doneN ? el('p', { style: 'margin-top:14px' }, el('button', { class: 'link', onclick: () => { Object.keys(decisions).forEach(k => delete decisions[k]); save(DECIDED_KEY, decisions); renderTriage(); renderToday(); } }, 'Review decisions again')) : null));
+    return;
+  }
+  const { a, p, key } = it, hrs = windowLeft(a);
+  const ta = el('textarea', { 'aria-label': 'LinkedIn note', maxlength: 600, oninput: e => { edits[key] = e.target.value; save(EDIT_KEY, edits); count.textContent = `${e.target.value.length} / 300`; count.className = e.target.value.length > 300 ? 'over' : ''; } });
+  ta.value = noteFor(a, p);
+  const count = el('span', { class: ta.value.length > 300 ? 'over' : '' }, `${ta.value.length} / 300`);
+  const greenlight = async () => {
+    const text = ta.value;
+    try { await navigator.clipboard.writeText(text); toast('Note copied. Paste it into LinkedIn.'); } catch { ta.select(); toast('Select and copy the note, then paste it into LinkedIn.'); }
+    window.open(p ? searchURL(a, p) : alumniURL(a), '_blank', 'noopener');
+    decide(key, 'greenlit'); triageFocus = null; renderTriage(); renderToday();
+  };
+  const skip = () => { decide(key, 'skipped'); toast('Skipped'); triageFocus = null; renderTriage(); renderToday(); };
+  const card = el('div', { class: 'card tcard' },
+    el('div', { class: 'who' }, el('div', { class: 'avatar', style: `background:${hue(p ? p.name : a.company)}` }, p ? initials(p.name) : '?'),
+      el('div', { style: 'min-width:0' }, el('h3', {}, p ? p.name : `Someone at ${a.company}`),
+        el('div', { class: 'sub' }, p ? p.title : 'No contact found by search yet: Greenlight opens a LinkedIn search of alumni there; pick one.'))),
+    el('div', { class: 'pills', style: 'justify-content:flex-start' }, p && isAlum(p) ? el('span', { class: 'pill violet' }, 'Alum') : null,
+      hrs != null ? el('span', { class: `pill ${hrs <= 0 ? 'red' : hrs < 12 ? 'amber' : 'blue'}` }, hrs > 0 ? `Send within ${Math.ceil(hrs)}h` : 'Past the 48h window') : null,
+      el('span', { class: 'pill grey' }, `${a.company} · ${a.title}`)),
+    ta,
+    el('div', { class: 'meta' }, count, el('span', {}, p && /^https?:\/\//.test(p.url) ? el('a', { href: p.url, target: '_blank', rel: 'noopener noreferrer' }, 'Where they were found ↗') : null)),
+    contactsPanel(a, p),
+    el('div', { class: 'tactions' }, el('button', { class: 'btn big', onclick: skip }, 'Skip', el('kbd', {}, 'S')),
+      el('button', { class: 'btn big go', onclick: greenlight }, p ? 'Greenlight' : 'Copy & find alumni', el('kbd', { style: 'color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.35)' }, 'G'))),
+    el('div', { style: 'text-align:center' }, el('button', { class: 'link', onclick: () => { closeSheet(); openSheet(a.id, 'resume'); } }, 'See the application and resume')));
+  host.replaceChildren(progress, el('div', { class: 'sub', style: 'color:var(--fg-2);font-size:14px' }, `${open.length} to go · ${doneN} decided`), card);
+  host._actions = { greenlight, skip, ta };
+}
+
+/* ---------- Approve (saved locally through /api/approvals) ---------- */
+let APPROVALS = {};
+async function loadApprovals() {
+  try { const r = await fetch('api/approvals', { cache: 'no-store', credentials: 'same-origin' }); if (r.ok) APPROVALS = await r.json(); } catch {}
+  renderApprove();
+}
+async function sendApproval(id, action, answers) {
+  const r = await fetch('api/approvals', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, action, answers }) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+  return r.json();
+}
+function renderApprove() {
+  const jobs = (DATA.approve || []);
+  const pending = jobs.filter(j => j.status === 'ready' && !APPROVALS[j.id]).length;
+  $('abadge').hidden = !pending; $('abadge').textContent = pending;
+  if (!jobs.length) { $('alist').replaceChildren(el('div', { class: 'empty' }, 'Nothing waiting for approval.')); return; }
+  $('alist').replaceChildren(...jobs.map(j => {
+    const rec = APPROVALS[j.id];
+    const decided = j.status === 'approved' ? 'approve' : rec?.action;
+    const inputs = {};
+    const needs = (j.needs || []).map(n => {
+      const f = n.long ? el('textarea', { rows: 3 }) : el('input', { type: 'text' });
+      f.value = rec?.answers?.[n.key] ?? n.value ?? ''; if (decided) f.disabled = true; inputs[n.key] = f;
+      return el('label', {}, n.label, n.hint ? el('span', { class: 'hint' }, n.hint) : null, f);
+    });
+    const state = el('span', { class: 'state' },
+      j.status === 'approved' ? 'Approved. The agent has picked it up and will submit it.' :
+      decided === 'approve' ? `Approved ${fmtDate(rec.at)}. It goes out on the agent's next run.` :
+      decided === 'reject' ? 'Marked as not this one.' : j.deadline ? `Closes ${j.deadline}` : '');
+    const btn = (label, cls, action) => el('button', { class: `btn ${cls}`, onclick: async e => {
+      const answers = Object.fromEntries(Object.entries(inputs).map(([k, f]) => [k, f.value.trim()]));
+      if (action === 'approve') { const missing = (j.needs || []).filter(n => n.required && !answers[n.key]); if (missing.length) { toast(`Fill in: ${missing.map(n => n.label).join(', ')}`); return; } }
+      e.currentTarget.disabled = true;
+      try { const out = await sendApproval(j.id, action, answers); if (action === 'undo') delete APPROVALS[j.id]; else APPROVALS[j.id] = out; toast(action === 'approve' ? 'Approved. It goes out on the agent\'s next run.' : action === 'undo' ? 'Undone' : 'Skipped'); }
+      catch (err) { toast(`Could not save: ${err.message}`); }
+      renderApprove();
+    } }, label);
+    const acts = decided ? [state, j.status === 'ready' ? btn('Undo', '', 'undo') : null] : [btn('Approve & submit', 'go big', 'approve'), btn('Not this one', '', 'reject'), state];
+    return el('article', { class: `acard${decided ? ' done' : ''}` },
+      el('div', { class: 'top' }, el('div', { class: 'logo', style: `background:${hue(j.company)}` }, initials(j.company)),
+        el('div', { class: 'meta' }, el('div', { class: 'co' }, j.company, j.location ? ` · ${j.location}` : ''), el('h3', {}, j.title)),
+        decided ? pill(decided === 'approve' ? 'submitted' : 'skipped') : null),
+      j.why ? el('p', { class: 'why' }, j.why) : null,
+      el('div', { class: 'links' }, el('a', { href: j.url, target: '_blank', rel: 'noopener' }, 'Posting ↗'),
+        ...(j.files || []).map(f => el('a', { href: f.href, target: '_blank', rel: 'noopener' }, f.label))),
+      needs.length ? el('div', { class: 'need' }, el('strong', {}, 'Only you can answer these'), ...needs) : null,
+      (j.answers || []).length ? el('details', { class: 'more' }, el('summary', {}, `Every answer the agent will give (${j.answers.length})`),
+        el('dl', { class: 'qa' }, ...j.answers.flatMap(([q, a]) => [el('dt', {}, q), el('dd', {}, a)]))) : null,
+      el('div', { class: 'acts' }, ...acts));
+  }));
+}
+
+/* ---------- Queue ---------- */
+function renderQueue() {
+  $('qlist').replaceChildren(...(DATA.queue.length ? DATA.queue.map(j => el('a', { class: 'item', href: j.url, target: '_blank', rel: 'noopener', style: 'color:inherit;text-decoration:none' },
+    el('div', { class: 'logo', style: `background:${hue(j.company)}` }, initials(j.company)),
+    el('div', { style: 'min-width:0' }, el('div', { class: 'co' }, j.company, j.location ? ` · ${j.location}` : ''), el('div', { class: 't' }, j.title)),
+    el('div', { class: 'pills' }, el('span', { class: 'pill blue' }, `Score ${j.score}`)), el('span', { class: 'chev' }, '↗'))) : [el('div', { class: 'empty' }, 'The queue is empty.')]));
+}
+
+/* ---------- Sankey ---------- */
+function sankey(svg, rows, title) {
+  const css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim();
+  const order = ['You', 'Agent', 'Found', 'Applied', 'Online assessment', 'Interview', 'Offer', 'Accepted', 'Declined', 'Withdrew', 'No reply yet', 'Rejected', 'Needs you', 'Not applied yet', 'Skipped', 'Closed'];
+  const rank = n => { const i = order.indexOf(n); return i < 0 ? 99 : i; };
+  const names = []; rows.forEach(r => { if (!names.includes(r.from)) names.push(r.from); if (!names.includes(r.to)) names.push(r.to); });
+  const depth = new Map(names.map(n => [n, 0]));
+  for (let k = 0; k < names.length; k++) rows.forEach(r => { const d = depth.get(r.from) + 1; if (d > depth.get(r.to)) depth.set(r.to, d); });
+  const maxD = Math.max(0, ...names.map(n => depth.get(n))), ends = ['No reply yet', 'Rejected', 'Accepted', 'Declined', 'Withdrew'];
+  names.forEach(n => { if (ends.includes(n) && !rows.some(r => r.from === n)) depth.set(n, maxD); });
+  const sumIn = n => rows.filter(r => r.to === n).reduce((s, r) => s + r.count, 0), sumOut = n => rows.filter(r => r.from === n).reduce((s, r) => s + r.count, 0);
+  const value = n => Math.max(sumIn(n), sumOut(n));
+  const cols = []; for (let d = 0; d <= maxD; d++) cols.push(names.filter(n => depth.get(n) === d).sort((a, b) => rank(a) - rank(b)));
+  const nodeW = 150, colGap = 96, left = 8, y0 = 70, gap = 16, minH = 32;
+  const W = Math.max(760, left * 2 + (maxD + 1) * nodeW + maxD * colGap);
+  const maxTotal = Math.max(1, ...cols.map(c => c.reduce((s, n) => s + value(n), 0))), scale = 300 / maxTotal;
+  const nodeH = n => Math.max(minH, value(n) * scale), colH = c => c.reduce((s, n) => s + nodeH(n), 0) + gap * Math.max(0, c.length - 1);
+  const tallest = Math.max(0, ...cols.map(colH)), H = rows.length ? y0 + tallest + 16 : 120;
+  const pos = new Map(); cols.forEach((c, d) => { let y = y0 + (tallest - colH(c)) / 2; c.forEach(n => { pos.set(n, { x: left + d * (nodeW + colGap), y, h: nodeH(n) }); y += nodeH(n) + gap; }); });
+  const lw = r => Math.max(2, r.count * scale), mid = n => pos.get(n).y + pos.get(n).h / 2, oY = new Map(), iY = new Map();
+  names.forEach(n => { const p = pos.get(n), outs = rows.filter(r => r.from === n).sort((a, b) => mid(a.to) - mid(b.to)), ins = rows.filter(r => r.to === n).sort((a, b) => mid(a.from) - mid(b.from));
+    let y = p.y + (p.h - outs.reduce((s, r) => s + lw(r), 0)) / 2; outs.forEach(r => { oY.set(r, y + lw(r) / 2); y += lw(r); });
+    y = p.y + (p.h - ins.reduce((s, r) => s + lw(r), 0)) / 2; ins.forEach(r => { iY.set(r, y + lw(r) / 2); y += lw(r); }); });
+  const quiet = ['Found', 'Not applied yet', 'Skipped', 'Closed', 'No reply yet', 'Withdrew', 'Declined'];
+  const tone = n => n === 'Rejected' ? v('--red') : (n === 'Offer' || n === 'Accepted') ? v('--green') : n === 'Needs you' ? v('--amber') : n === 'Agent' ? v('--violet') : quiet.includes(n) ? v('--fg-3') : v('--accent');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.replaceChildren();
+  const applied = sumIn('Applied'), found = sumOut('Found'), interviews = sumIn('Interview');
+  svg.append(svgEl('text', { x: left, y: 26, 'font-size': 20, 'font-weight': 700, fill: v('--fg'), 'letter-spacing': '-0.4' }, title));
+  svg.append(svgEl('text', { x: left, y: 48, 'font-size': 14, fill: v('--fg-2') }, rows.length ? `${found ? found + ' found · ' : ''}${applied} applied · ${interviews} reached interview` : 'Nothing yet'));
+  rows.forEach(r => { const s = pos.get(r.from), t = pos.get(r.to), x1 = s.x + nodeW, x2 = t.x, sy = oY.get(r), ty = iY.get(r), mx = (x1 + x2) / 2;
+    const p = svgEl('path', { d: `M${x1},${sy} C${mx},${sy} ${mx},${ty} ${x2},${ty}`, fill: 'none', stroke: tone(['You', 'Agent'].includes(r.from) ? r.from : r.to), 'stroke-opacity': .25, 'stroke-width': lw(r) });
+    p.append(svgEl('title', {}, `${r.from} → ${r.to}: ${r.count}`)); svg.append(p); });
+  names.forEach(n => { const p = pos.get(n), c = tone(n);
+    svg.append(svgEl('rect', { x: p.x, y: p.y, width: nodeW, height: p.h, rx: 10, fill: v('--surface') }));
+    svg.append(svgEl('rect', { x: p.x, y: p.y, width: nodeW, height: p.h, rx: 10, fill: c, 'fill-opacity': .14, stroke: c, 'stroke-opacity': .5 }));
+    svg.append(svgEl('text', { x: p.x + 12, y: p.y + p.h / 2 + 5, 'font-size': 14, 'font-weight': 500, fill: v('--fg') }, n));
+    svg.append(svgEl('text', { x: p.x + nodeW - 12, y: p.y + p.h / 2 + 5, 'font-size': 14, 'font-weight': 700, 'text-anchor': 'end', fill: v('--fg') }, value(n).toLocaleString('en-US'))); });
+}
+
+/* ---------- keys ---------- */
+document.addEventListener('keydown', e => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
+  if (e.key === 'Escape') hidePeek();
+  if (e.key === 'Escape') { if (current != null) closeSheet(); else document.activeElement?.blur(); return; }
+  if (typing) return;
+  if (current != null && (e.key === 'j' || e.key === 'ArrowDown')) { e.preventDefault(); step(1); return; }
+  if (current != null && (e.key === 'k' || e.key === 'ArrowUp')) { e.preventDefault(); step(-1); return; }
+  const tabs = ['today', 'approve', 'apps', 'outreach', 'pipeline', 'queue'];
+  if (/^[1-6]$/.test(e.key)) { show(tabs[+e.key - 1]); return; }
+  if (e.key === '/') { e.preventDefault(); show('apps'); $('q').focus(); return; }
+  const t = $('triage')._actions;
+  if (!$('outreach').hidden && t) { if (e.key === 'g') t.greenlight(); if (e.key === 's') t.skip(); if (e.key === 'e') { e.preventDefault(); t.ta.focus(); } }
+});
+
+fetch('data.json', { cache: 'no-store' }).then(r => r.json()).then(d => {
+  DATA = d;
+  $('stamp').textContent = `Updated ${new Date(d.generated).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`;
+  document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+  $('scrim').addEventListener('click', closeSheet);
+  $('peek').addEventListener('mouseenter', () => clearTimeout(peekHide));
+  $('peek').addEventListener('mouseleave', () => { peekHide = setTimeout(hidePeek, 160); });
+  addEventListener('scroll', hidePeek, { passive: true }); addEventListener('resize', hidePeek);
+  $('q').addEventListener('input', renderApps);
+  chips('fstatus', FSTATUS, () => fstatus, v => fstatus = v); chips('fwho', FWHO, () => fwho, v => fwho = v);
+  renderToday(); renderRadar(); renderApps(); renderQueue(); renderApprove(); loadApprovals();
+  sankey($('chart-all'), d.funnel_all, 'All applications'); sankey($('chart-pipe'), d.funnel_pipeline, 'Agent pipeline');
+  const h = location.hash.slice(1); show(h && $(h) ? h : 'today');
+  setInterval(renderToday, 60000);  // keep the 48-hour countdowns current
+}).catch(() => { $('stamp').textContent = 'Could not load data'; $('summary').textContent = 'The dashboard data did not load. Rebuild with build_site.py.'; });
+</script>
+</body>
+</html>

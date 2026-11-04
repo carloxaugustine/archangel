@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./fetch_jobs.py *)",
+      "Bash(./resume-builder/build_resume.py *)",
+      "Bash(./dashboard/build_site.py)",
+      "Bash(./probe_boards.py *)",
+      "Bash(pdftotext *)"
+    ]
+  }
+}
