@@ -1,4 +1,4 @@
-# Internship Agent
+# Wingman
 
 An internship search agent that runs in Claude Code on your own computer. It finds postings, tailors a one-page resume for each job, prepares the application, and waits for your approval before anything is sent.
 
@@ -25,8 +25,8 @@ You need a Mac or Linux computer and a paid Claude plan.
 **2. Download this repo and run the setup script.** It checks for Python and the resume tools, and asks before installing anything.
 
 ```bash
-git clone <this repo's URL>
-cd internship-agent
+git clone https://github.com/carloxaugustine/wingman.git
+cd wingman
 ./setup.sh
 ```
 
