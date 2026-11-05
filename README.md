@@ -17,21 +17,7 @@ It finds postings, tailors a one-page resume for each job, prepares the applicat
 
 </div>
 
-<img src="docs/pipeline.svg" alt="Six stages: find, rank, tailor, approve, submit, follow up." width="100%">
-
-```text
-SOURCES   job boards · GitHub lists · alert emails · scout agent
-   ↓
-TRACKER   removes duplicates, filters, scores fit
-   ↓
-PREPARE   tailored resume + drafted form answers
-   ↓
-APPROVE   you edit, approve or skip on a local dashboard
-   ↓
-SUBMIT    Greenhouse and Lever go out from your browser. Other sites, you press Submit.
-   ↓
-FOLLOW    outreach drafts you rewrite and send yourself
-```
+<img src="docs/pipeline.svg" alt="Six stages. Find: job boards, GitHub lists, alert emails, scout. Rank: dedupes and scores fit. Tailor: a resume from your bullets. Approve: you edit, approve or skip. Submit: Greenhouse and Lever only; on other sites you press Submit. Follow up: drafts you send yourself." width="100%">
 
 ## ▓ 01 // INSTALL
 
