@@ -33,6 +33,7 @@ Everything lives in this folder. If `profile.toml` is empty, stop and tell the u
 
 - **Never press Return in a form unless a matching dropdown option is visible.** On Greenhouse, Return in a dropdown showing "No options" submits the whole form. Press Escape and clear the field instead.
 - **Match dropdown options exactly.** Read the full option list first and pick by whole label. A loose match on "not a protected veteran" can select "I identify as a veteran, just not a protected veteran".
+- **Fill every optional links field.** Where a form has a Websites, Links, LinkedIn or Portfolio field, enter `linkedin` and `website` from `profile.toml`, including on Workday, where Websites sits under an Add button on the My Experience step. Fix this before handing off.
 - **Read every answer back before Submit,** and look at a screenshot when a tool hides a value.
 - **Scan every attached PDF** with `pdftotext` for "TODO", "TBD", "XXX" and leftover notes before uploading.
 - A Lever submit that stays on `/apply` usually means a blank required field, not a CAPTCHA: check `checkValidity()` first. Lever's "If you selected Other, please specify" can be required when Other isn't chosen: answer N/A.
