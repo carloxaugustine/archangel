@@ -148,7 +148,7 @@ def main():
     data = dict(me=dict(first=prof.get("identity", {}).get("first_name", ""), school=prof.get("education", {}).get("school", "")),
                 generated=dt.datetime.now().isoformat(timespec="minutes"), dry_run=CFG["submit"]["dry_run"],
                 cap=CFG["submit"]["max_auto_submits_per_day"], applications=apps, approve=approve, queue=queue, radar=radar,
-                funnel_all=funnel("all"), funnel_pipeline=funnel("pipeline"))
+                funnel_you=funnel("you"), funnel_agent=funnel("agent"), funnel_found=funnel("found"))
     (DIST / "data.json").write_text(json.dumps(data))
     shutil.copy(HERE / "index.html", DIST / "index.html")
     print(f"built {DIST}: {len(apps)} applications, {sum(1 for a in apps if a['resume'])} resumes, "

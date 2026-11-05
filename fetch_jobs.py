@@ -955,6 +955,19 @@ def cmd_funnel(a):
     found = {"submitted": "Applied", "needs_user": "Needs you", "new": "Not applied yet", "shortlisted": "Not applied yet",
              "filled": "Not applied yet", "skipped": "Skipped", "closed": "Closed"}
     flows = {}
+    if a.scope in ("you", "agent", "found"):  # one level only, so no flow can cross another or pass behind a box
+        if a.scope == "found":
+            for r in db().execute("SELECT status, COUNT(*) n FROM jobs WHERE source != 'email' GROUP BY status"):
+                k = ("found", found.get(r["status"], "Not applied yet"))
+                flows[k] = flows.get(k, 0) + r["n"]
+        else:
+            for r in db().execute("SELECT outcome, applied_by FROM jobs WHERE status='submitted'"):
+                if (r["applied_by"] == "user") == (a.scope == "you"):
+                    k = ("submitted", r["outcome"] or "none")
+                    flows[k] = flows.get(k, 0) + 1
+        out = [{"from": names[x], "to": names[y], "count": n} for (x, y), n in flows.items()]
+        print(json.dumps(out) if a.json else "\n".join(f"{f['from']:20} -> {f['to']:20} {f['count']}" for f in out) or "no postings tracked")
+        return
     if a.scope == "pipeline":
         for r in db().execute("SELECT status, COUNT(*) n FROM jobs WHERE source != 'email' GROUP BY status"):
             k = ("found", found.get(r["status"], "Not applied yet"))
@@ -1035,7 +1048,7 @@ def main():
     p = sp.add_parser("set-outcome", help="record a company's response to a submitted application")
     p.add_argument("id", type=int); p.add_argument("outcome", choices=OUTCOMES); p.add_argument("--note"); p.set_defaults(f=cmd_set_outcome)
     p = sp.add_parser("funnel", help="stage-to-stage flow counts for the Sankey chart"); p.add_argument("--json", action="store_true")
-    p.add_argument("--scope", choices=["pipeline", "all"], default="pipeline")
+    p.add_argument("--scope", choices=["pipeline", "all", "you", "agent", "found"], default="pipeline")
     p.set_defaults(f=cmd_funnel)
     a = ap.parse_args()
     a.f(a)

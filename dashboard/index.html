@@ -277,8 +277,9 @@ details.more summary { cursor: pointer; font-size: 13px; color: var(--accent); }
 
   <section class="view" id="pipeline" hidden>
     <div class="hero"><h1>Pipeline</h1><p>Where every application stands.</p></div>
-    <div class="card chart"><svg id="chart-all" role="img" aria-label="All applications"></svg></div>
-    <div class="card chart"><svg id="chart-pipe" role="img" aria-label="Agent pipeline"></svg></div>
+    <div class="card chart"><svg id="chart-you" role="img" aria-label="Your applications"></svg></div>
+    <div class="card chart"><svg id="chart-agent" role="img" aria-label="Agent applications"></svg></div>
+    <div class="card chart"><svg id="chart-found" role="img" aria-label="Every job found"></svg></div>
   </section>
 
   <section class="view" id="queue" hidden>
@@ -698,7 +699,7 @@ function renderQueue() {
 /* ---------- Sankey ---------- */
 function sankey(svg, rows, title) {
   const css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim();
-  const order = ['You', 'Agent', 'Found', 'Applied', 'Online assessment', 'Interview', 'Offer', 'Accepted', 'Declined', 'Withdrew', 'No reply yet', 'Rejected', 'Needs you', 'Not applied yet', 'Skipped', 'Closed'];
+  const order = ['You', 'Agent', 'Found', 'Applied', 'Online assessment', 'Interview', 'Offer', 'Accepted', 'Declined', 'Withdrew', 'Under review', 'No reply yet', 'Rejected', 'Needs you', 'Not applied yet', 'Skipped', 'Closed'];
   const rank = n => { const i = order.indexOf(n); return i < 0 ? 99 : i; };
   const names = []; rows.forEach(r => { if (!names.includes(r.from)) names.push(r.from); if (!names.includes(r.to)) names.push(r.to); });
   const depth = new Map(names.map(n => [n, 0]));
@@ -708,7 +709,7 @@ function sankey(svg, rows, title) {
   const sumIn = n => rows.filter(r => r.to === n).reduce((s, r) => s + r.count, 0), sumOut = n => rows.filter(r => r.from === n).reduce((s, r) => s + r.count, 0);
   const value = n => Math.max(sumIn(n), sumOut(n));
   const cols = []; for (let d = 0; d <= maxD; d++) cols.push(names.filter(n => depth.get(n) === d).sort((a, b) => rank(a) - rank(b)));
-  const nodeW = 150, colGap = 96, left = 8, y0 = 70, gap = 16, minH = 32;
+  const nodeW = 190, colGap = maxD === 1 ? 900 - 16 - 380 : 96, left = 8, y0 = 70, gap = 16, minH = 32;
   const W = Math.max(760, left * 2 + (maxD + 1) * nodeW + maxD * colGap);
   const maxTotal = Math.max(1, ...cols.map(c => c.reduce((s, n) => s + value(n), 0))), scale = 300 / maxTotal;
   const nodeH = n => Math.max(minH, value(n) * scale), colH = c => c.reduce((s, n) => s + nodeH(n), 0) + gap * Math.max(0, c.length - 1);
@@ -721,9 +722,9 @@ function sankey(svg, rows, title) {
   const quiet = ['Found', 'Not applied yet', 'Skipped', 'Closed', 'No reply yet', 'Withdrew', 'Declined'];
   const tone = n => n === 'Rejected' ? v('--red') : (n === 'Offer' || n === 'Accepted') ? v('--green') : n === 'Needs you' ? v('--amber') : n === 'Agent' ? v('--violet') : quiet.includes(n) ? v('--fg-3') : v('--accent');
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.replaceChildren();
-  const applied = sumIn('Applied'), found = sumOut('Found'), interviews = sumIn('Interview');
+  const applied = Math.max(sumIn('Applied'), sumOut('Applied')), found = sumOut('Found'), interviews = sumIn('Interview');
   svg.append(svgEl('text', { x: left, y: 26, 'font-size': 20, 'font-weight': 700, fill: v('--fg'), 'letter-spacing': '-0.4' }, title));
-  svg.append(svgEl('text', { x: left, y: 48, 'font-size': 14, fill: v('--fg-2') }, rows.length ? `${found ? found + ' found · ' : ''}${applied} applied · ${interviews} reached interview` : 'Nothing yet'));
+  svg.append(svgEl('text', { x: left, y: 48, 'font-size': 14, fill: v('--fg-2') }, rows.length ? (found ? `${found} found · ${applied} applied, including ones you sent yourself` : `${applied} applied · ${interviews} reached interview`) : 'Nothing yet'));
   rows.forEach(r => { const s = pos.get(r.from), t = pos.get(r.to), x1 = s.x + nodeW, x2 = t.x, sy = oY.get(r), ty = iY.get(r), mx = (x1 + x2) / 2;
     const p = svgEl('path', { d: `M${x1},${sy} C${mx},${sy} ${mx},${ty} ${x2},${ty}`, fill: 'none', stroke: tone(['You', 'Agent'].includes(r.from) ? r.from : r.to), 'stroke-opacity': .25, 'stroke-width': lw(r) });
     p.append(svgEl('title', {}, `${r.from} → ${r.to}: ${r.count}`)); svg.append(p); });
@@ -760,7 +761,7 @@ fetch('data.json', { cache: 'no-store' }).then(r => r.json()).then(d => {
   $('q').addEventListener('input', renderApps);
   chips('fstatus', FSTATUS, () => fstatus, v => fstatus = v); chips('fwho', FWHO, () => fwho, v => fwho = v);
   renderToday(); renderRadar(); renderApps(); renderQueue(); renderApprove(); loadApprovals();
-  sankey($('chart-all'), d.funnel_all, 'All applications'); sankey($('chart-pipe'), d.funnel_pipeline, 'Agent pipeline');
+  sankey($('chart-you'), d.funnel_you, 'Your applications'); sankey($('chart-agent'), d.funnel_agent, 'Agent applications'); sankey($('chart-found'), d.funnel_found, 'Every job found');
   const h = location.hash.slice(1); show(h && $(h) ? h : 'today');
   setInterval(renderToday, 60000);  // keep the 48-hour countdowns current
 }).catch(() => { $('stamp').textContent = 'Could not load data'; $('summary').textContent = 'The dashboard data did not load. Rebuild with build_site.py.'; });
