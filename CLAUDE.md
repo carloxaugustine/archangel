@@ -11,6 +11,7 @@ If `profile.toml` is missing or still empty, tell the user to run `./setup.sh` a
 | `.claude/skills/internship-setup/` | first-run interview |
 | `.claude/skills/internship-agent/` | operating rules for every run; read before changing behavior |
 | `.claude/agents/internship-scout.md` | finds fresh, low-competition postings |
+| `.claude/agents/application-reviewer.md` | checks each prepared card; flags only |
 | `config.toml` | submit settings, targets, scoring, company boards (private) |
 | `profile.toml`, `answers.md` | the only facts that may go on a form (private) |
 | `resume-builder/facts.toml` | resume bullet bank (private); `build_resume.py` only picks from it |

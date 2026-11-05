@@ -17,8 +17,8 @@ Finish with a one-line summary."
 
 ALLOWED=(
   "Bash(./fetch_jobs.py *)" "Bash(./resume-builder/build_resume.py *)" "Bash(./dashboard/build_site.py)"
-  "Read($DIR/**)" "Write($DIR/applications/**)" "Edit($DIR/applications/**)"
-  "Skill" "ToolSearch" "WebSearch"
+  "Read(/$DIR/**)" "Edit(/$DIR/applications/**)"
+  "Skill" "ToolSearch" "WebSearch" "Agent"
   "mcp__claude_ai_Gmail__search_threads" "mcp__claude_ai_Gmail__get_thread" "mcp__claude-in-chrome"
 )
 {

@@ -226,6 +226,9 @@ def fetch_board(c):
 
 
 def is_us(loc):
+    parts = [x.strip() for x in (loc or "").split(";")]
+    if loc and all(re.search(r",\s*[A-Z]{2},\s*(?!US$)[A-Z]{2}$", x) for x in parts):
+        return False  # "Cold Lake, AB, CA" is Canada, not California
     if not loc or US_WORDS.search(loc):
         return True
     return any(re.search(rf",\s*{s}\b", loc) for s in US_STATES)
@@ -250,6 +253,11 @@ def score(job, cat):
     if TARGETS.get("stale_terms") and re.search(TARGETS["stale_terms"], text):
         s -= 4
     s += freshness(job.get("posted"))
+    pref = PREFS.get("prefer_location")
+    if pref and re.search(pref, job.get("location") or "", re.I) and is_us(job.get("location")):
+        s += PREFS.get("prefer_bonus", 2)
+    if cat in PREFS.get("penalty_categories", []):
+        s -= PREFS.get("penalty", 3)
     return s
 
 
@@ -287,7 +295,7 @@ def db():
     if "updated_at" not in {r[1] for r in con.execute("PRAGMA table_info(jobs)")}:
         con.execute("ALTER TABLE jobs ADD COLUMN updated_at TEXT")  # when status last changed
     cols = {r[1] for r in con.execute("PRAGMA table_info(jobs)")}
-    for c, ddl in (("applicants", "INTEGER"), ("deadline", "TEXT DEFAULT ''"), ("scout_note", "TEXT DEFAULT ''")):
+    for c, ddl in (("desc_tried", "TEXT"), ("applicants", "INTEGER"), ("deadline", "TEXT DEFAULT ''"), ("scout_note", "TEXT DEFAULT ''")):
         if c not in cols:  # scout fields: applicant count when a non-LinkedIn page shows it, closing date, why it was picked
             con.execute(f"ALTER TABLE jobs ADD COLUMN {c} {ddl}")
     if "outcome" not in cols:  # what the company did after a submitted application
@@ -354,8 +362,9 @@ def cmd_fetch(a):
             for j in filter(keep, jobs):
                 cat = classify(j)
                 seen.add(j["uid"])
-                cur = con.execute("SELECT id FROM jobs WHERE uid=?", (j["uid"],)).fetchone()
+                cur = con.execute("SELECT id, description FROM jobs WHERE uid=?", (j["uid"],)).fetchone()
                 if cur:
+                    j["description"] = j["description"] or cur["description"]  # title-only feeds: keep the text fetched earlier
                     con.execute("UPDATE jobs SET title=?, location=?, description=?, last_seen=?, category=?, score=?, "
                                 "status=CASE WHEN status='closed' THEN 'new' ELSE status END WHERE uid=?",
                                 (j["title"], j["location"], j["description"], now, cat, score(j, cat), j["uid"]))
@@ -377,6 +386,8 @@ def cmd_fetch(a):
         if r["uid"].startswith(ok_prefixes) and r["uid"] not in seen:
             con.execute("UPDATE jobs SET status='closed' WHERE uid=?", (r["uid"],))
     con.commit()
+    if not getattr(a, "no_lists", False):
+        print(f"descriptions fetched: {fill_descriptions(con)}")
     total = con.execute("SELECT COUNT(*) FROM jobs WHERE status NOT IN ('closed','skipped')").fetchone()[0]
     print(f"fetched {len(CFG['company']) - len(errors)} boards: {len(seen)} matching internships, {new} new, {total} open in tracker")
     for e in errors:
@@ -473,6 +484,205 @@ def auto_ok(r):
             and (not t or t in s["auto_submit_terms"]))
 
 
+PREFS = CFG.get("targets", {})
+
+
+def fill_descriptions(con, limit=60):
+    """Fetch each posting's text once for feeds that only list titles, then rescore it. Slow on purpose: these are their servers."""
+    host_domain = {c["token"].split("|")[0]: c["token"].split("|")[1] for c in CFG["company"] if c["ats"] == "eightfold"}
+    rows = con.execute("SELECT * FROM jobs WHERE status IN ('new','shortlisted') AND ats IN ('workday','eightfold') AND description='' "
+                       "AND desc_tried IS NULL ORDER BY (ats='eightfold') DESC, id DESC LIMIT ?", (limit,)).fetchall()
+    done = 0
+    for r in rows:
+        try:
+            if r["ats"] == "eightfold":
+                _, host, pid = r["uid"].split(":", 2)
+                q = urllib.parse.urlencode({"position_id": pid, "domain": host_domain.get(host, ""), "hl": "en"})
+                text = (get(f"https://{host}/api/pcsx/position_details?{q}").get("data") or {}).get("jobDescription", "")
+                time.sleep(4)
+            else:
+                m = re.match(r"(https://([^.]+)\.wd\d+\.myworkdayjobs\.com)/([^/]+)(/.*)$", r["url"] or "")
+                if not m:
+                    con.execute("UPDATE jobs SET desc_tried=? WHERE id=?", (dt.datetime.now().isoformat(timespec="seconds"), r["id"]))
+                    continue
+                text = (get(f"{m.group(1)}/wday/cxs/{m.group(2)}/{m.group(3)}{m.group(4)}").get("jobPostingInfo") or {}).get("jobDescription", "")
+                time.sleep(0.5)
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                print(f"  descriptions: rate limited by {r['company']}, stopping for this run")
+                break
+            text = ""
+        except Exception:
+            text = ""
+        text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html.unescape(html.unescape(text or "")))).strip()
+        job = dict(title=r["title"], team=r["team"] or "", location=r["location"] or "", description=text, posted=r["posted"])
+        cat = classify(job)
+        con.execute("UPDATE jobs SET description=?, category=?, score=?, desc_tried=? WHERE id=?",
+                    (text, cat, score(job, cat), dt.datetime.now().isoformat(timespec="seconds"), r["id"]))
+        con.commit()
+        done += 1 if text else 0
+    con.commit()
+    return done
+
+
+def cmd_descriptions(a):
+    print(f"descriptions fetched: {fill_descriptions(db(), a.limit)}")
+
+
+def cmd_rescore(a):
+    """Recompute category and score for open postings from their stored text, after scoring rules change."""
+    con = db()
+    changed = 0
+    for r in con.execute("SELECT * FROM jobs WHERE status IN ('new','shortlisted','ready','approved','self','needs_user') AND source != 'email'").fetchall():
+        job = dict(title=r["title"], team=r["team"] or "", location=r["location"] or "", description=r["description"] or "", posted=r["posted"])
+        cat = classify(job)
+        s = score(job, cat)
+        if s != r["score"] or cat != r["category"]:
+            con.execute("UPDATE jobs SET category=?, score=? WHERE id=?", (cat, s, r["id"]))
+            changed += 1
+    con.commit()
+    print(f"rescored: {changed} changed")
+
+
+BOARD_ATS = {"greenhouse", "lever", "ashby", "smartrecruiters", "workable", "recruitee", "workday", "gem", "phenom", "eightfold"}
+
+
+def cmd_adopt_boards(a):
+    """Add boards the scout listed in scout/boards.md to config.toml, once each is confirmed to answer. Text in that file came from the web, so it is checked strictly."""
+    path = HERE / "scout" / "boards.md"
+    if not path.exists():
+        print("no scout/boards.md"); return
+    have = {(c["ats"], c["token"].lower()) for c in CFG["company"]}
+    added = []
+    for line in path.read_text().splitlines():
+        f = [x.strip() for x in line.split("|")]
+        if len(f) < 3:
+            continue
+        name, ats, token = f[0], f[1].lower(), "|".join(f[2:5]) if f[1].lower() == "workday" and len(f) >= 5 else f[2]
+        if ats == "workday" and not re.fullmatch(r"[\w-]+\|wd\d+\|[\w-]+", token):
+            token = f[2]
+        if ats not in BOARD_ATS or (ats, token.lower()) in have or not re.fullmatch(r"[\w.|-]+", token) or not re.fullmatch(r"[\w &.,'()/-]{1,60}", name):
+            continue
+        try:
+            jobs = fetch_board(dict(name=name, ats=ats, token=token))
+        except Exception as e:
+            print(f"  skipped {name} ({ats}): {str(e)[:60]}")
+            continue
+        if not jobs:
+            print(f"  skipped {name} ({ats}): empty board")
+            continue
+        have.add((ats, token.lower()))
+        added.append((name, ats, token, len(jobs)))
+        time.sleep(1)
+    if added and not a.dry_run:
+        with open(HERE / "config.toml", "a") as out:
+            for name, ats, token, _ in added:
+                out.write(f'\n[[company]]\nname = {json.dumps(name)}\nats = "{ats}"\ntoken = "{token}"\n')
+    for name, ats, token, n in added:
+        print(f"  {'would add' if a.dry_run else 'added'} {name} ({ats}, {token}): {n} postings")
+    print(f"boards added: {0 if a.dry_run else len(added)}")
+
+
+def cmd_outreach_due(a):
+    """Applications the agent submitted that have no outreach draft yet, newest first."""
+    rows = db().execute("SELECT id, company, title, submitted_at FROM jobs WHERE status='submitted' AND applied_by != ? AND ats IN ('greenhouse','lever') "
+                        "ORDER BY submitted_at DESC", ("user",)).fetchall()
+    due = [r for r in rows if not (HERE / "applications" / f"{r['id']}-outreach.md").exists()]
+    for r in due[:a.limit]:
+        print(f"{r['id']:5d} {(r['submitted_at'] or '')[:10]} {r['company']} / {r['title']}")
+    print(f"({len(due)} without a draft)")
+
+
+def cmd_outcomes(a):
+    """What has come back so far, by group. Logged only: too little data to change the ranking yet."""
+    for col in ("applied_by", "category", "ats"):
+        print(f"by {col}: applied / rejected / assessment / interview / offer")
+        for r in db().execute(f"SELECT {col} g, COUNT(*) n, SUM(outcome='rejected') rej, SUM(reached LIKE '%oa%') oa, "
+                              f"SUM(reached LIKE '%interview%') iv, SUM(reached LIKE '%offer%') offer FROM jobs WHERE status='submitted' GROUP BY 1 ORDER BY n DESC"):
+            print(f"  {(r['g'] or 'unknown'):14} {r['n']:4d} {r['rej']:4d} {r['oa']:4d} {r['iv']:4d} {r['offer']:4d}")
+
+
+SLOP = re.compile(r"\b(delve|tapestry|testament|foster|leverage|utilize|facilitate|empower|streamline|robust|cutting-edge|game changer|realm|beacon|"
+                  r"multifaceted|meticulous|intricate|paramount|transformative|elevate|embark|supercharge|passionate|thrilled)\b", re.I)
+
+
+def essay_key(text):
+    return re.sub(r"\W+", " ", (text or "").lower()).strip()
+
+
+def job_texts(jid):
+    """(plan, answers text list, long essays) for a job, with the user's approval edits applied."""
+    plan_p, ap_p = HERE / "applications" / f"{jid}-plan.json", HERE / "applications" / f"{jid}-approval.json"
+    plan = json.loads(plan_p.read_text()) if plan_p.exists() else None
+    edits = (json.loads(ap_p.read_text()).get("answers") or {}) if ap_p.exists() else {}
+    if not plan:
+        return None, [], []
+    texts = [str(a) for _, a in plan.get("answers", [])]
+    essays = []
+    for n in plan.get("needs", []):
+        v = edits.get(n.get("key"), n.get("value") or "")
+        texts.append(v)
+        if len(v) >= 200:
+            essays.append((n.get("label", n.get("key", "")), v))
+    return plan, texts, essays
+
+
+def review_job(con, jid):
+    """Mechanical checks on a prepared application. Flags problems for the card; it never changes or blocks anything."""
+    import subprocess
+    r = con.execute("SELECT * FROM jobs WHERE id=?", (jid,)).fetchone()
+    flags = []
+    plan, texts, essays = job_texts(jid)
+    if not plan:
+        flags.append("No plan file for this application.")
+    prof = tomllib.loads((HERE / "profile.toml").read_text()) if (HERE / "profile.toml").exists() else {}
+    who = prof.get("identity", {})
+    placeholder = re.compile(r"\b(TODO|TBD|XXX|lorem ipsum)\b|\[Name\]" + (rf"|\b{re.escape(who['first_name'])}:" if who.get("first_name") else ""))
+    for t in texts:
+        if (m := placeholder.search(t)):
+            flags.append(f"Placeholder text in an answer: \"{m.group(0)}\".")
+    joined = " ".join(texts).lower()
+    for field in ("linkedin", "website"):
+        v = who.get(field, "")
+        if plan and v and v.replace("https://", "").lower() not in joined:
+            flags.append(f"Your {field} isn't in the planned answers. Fill it in any links field on the form.")
+    pdfs = list((HERE / "resumes" / "tailored").glob(f"{jid}-*/*Resume.pdf"))
+    if not pdfs:
+        flags.append("No tailored resume built.")
+    for f in (plan or {}).get("extra_files", []):
+        p = HERE / f["path"]
+        pdfs.append(p) if p.exists() else flags.append(f"Attachment missing: {f['path']}")
+    for pdf in pdfs:
+        text = subprocess.run(["pdftotext", "-layout", str(pdf), "-"], capture_output=True, text=True).stdout
+        if (m := placeholder.search(text)):
+            flags.append(f"Placeholder in {pdf.name}: \"{m.group(0)}\".")
+    for label, text in essays:
+        if (m := SLOP.search(text)):
+            flags.append(f"\"{label[:40]}\" uses \"{m.group(0)}\", which reads as AI writing.")
+    mine = {essay_key(t) for _, t in essays}
+    if mine and r:
+        others = con.execute("SELECT id FROM jobs WHERE lower(company)=lower(?) AND id != ? AND status IN ('ready','approved','self','submitted','filled')",
+                             (r["company"], jid)).fetchall()
+        seen = {}
+        for o in others:
+            for _, t in job_texts(o["id"])[2]:
+                seen.setdefault(essay_key(t), o["id"])
+        for k in mine & set(seen):
+            flags.append(f"Same essay as #{seen[k]} at {r['company']}. Recruiters there may see both.")
+    (HERE / "applications" / f"{jid}-review.json").write_text(json.dumps(dict(flags=flags), indent=1))
+    return flags
+
+
+def cmd_review(a):
+    con = db()
+    ids = [a.id] if a.id else [x["id"] for x in con.execute("SELECT id FROM jobs WHERE status IN ('ready','approved','self')")]
+    for jid in ids:
+        flags = review_job(con, jid)
+        print(f"{jid}: {'clean' if not flags else ''}")
+        for f in flags:
+            print(f"   - {f}")
+
+
 def cmd_list(a):
     q, args = "SELECT * FROM jobs WHERE 1=1", []
     if a.status:
@@ -521,6 +731,8 @@ def cmd_set_status(a):
     n = con.execute(f"UPDATE jobs SET {', '.join(sets)} WHERE id=?", (*args, a.id)).rowcount
     con.commit()
     print(f"job {a.id} -> {a.status}" if n else f"no job {a.id}")
+    if n and a.status == "ready":
+        review_job(db(), a.id)
     if n and a.status in ("submitted", "ready"):
         redeploy_site()
 
@@ -784,6 +996,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = ap.add_subparsers(dest="cmd", required=True)
     p = sp.add_parser("fetch"); p.add_argument("--no-lists", action="store_true", help="skip the GitHub internship lists"); p.set_defaults(f=cmd_fetch)
+    p = sp.add_parser("descriptions", help="fetch posting text for title-only feeds, a few at a time"); p.add_argument("--limit", type=int, default=60); p.set_defaults(f=cmd_descriptions)
+    sp.add_parser("rescore", help="recompute scores from stored text after scoring rules change").set_defaults(f=cmd_rescore)
+    p = sp.add_parser("adopt-boards", help="add boards from scout/boards.md to config.toml once they answer"); p.add_argument("--dry-run", action="store_true"); p.set_defaults(f=cmd_adopt_boards)
+    p = sp.add_parser("outreach-due", help="submitted applications with no outreach draft yet"); p.add_argument("--limit", type=int, default=30); p.set_defaults(f=cmd_outreach_due)
+    sp.add_parser("outcomes", help="what has come back so far, by group").set_defaults(f=cmd_outcomes)
+    p = sp.add_parser("review", help="check prepared applications for mistakes; flags only"); p.add_argument("id", type=int, nargs="?"); p.set_defaults(f=cmd_review)
     sp.add_parser("fetch-lists", help="import matching internships from the GitHub lists in config.toml").set_defaults(f=cmd_fetch_lists)
     p = sp.add_parser("list"); p.add_argument("--status"); p.add_argument("--min-score", type=int)
     p.add_argument("--auto", action="store_true", help="only auto-submit-eligible rows"); p.add_argument("--limit", type=int, default=60); p.add_argument("--company", help="only companies containing this text")

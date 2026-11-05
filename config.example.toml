@@ -27,6 +27,10 @@ term_label = "Summer 2027"          # exact wording the GitHub lists use
 season = "summer"
 year = "2027"                       # postings naming this year score higher
 stale_terms = "fall 2026|summer 2026"   # postings naming these score lower
+prefer_location = ""                # regex of places to rank higher, e.g. "california|,\\s*CA\\b"
+prefer_bonus = 2
+penalty_categories = []             # scoring categories to rank lower
+penalty = 3
 home_area = ""                      # regex of nearby places, e.g. "austin|round rock|cedar park"
 github_lists = ["SimplifyJobs/Summer2027-Internships", "vanshb03/Summer2027-Internships"]
 

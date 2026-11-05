@@ -98,7 +98,7 @@ def main():
         o = outreach.read_text() if outreach.exists() else ""
         apps.append(dict(
             id=r["id"], company=r["company"], title=r["title"], location=r["location"], url=r["url"],
-            status=r["status"], outcome=r["outcome"] or "", reached=r["reached"] or "", applied_by=r["applied_by"] or "",
+            status=r["status"], outcome=r["outcome"] or "", outcome_at=r["outcome_at"] or "", reached=r["reached"] or "", applied_by=r["applied_by"] or "",
             source=r["source"], category=r["category"], score=r["score"], note=r["note"] or "",
             submitted_at=r["submitted_at"] or "", updated_at=r["updated_at"] or "",
             recent=bool((r["updated_at"] or "") >= since), resume=resume,
@@ -133,7 +133,11 @@ def main():
             if src.exists():
                 shutil.copy(src, DIST / "files" / f"{r['id']}-{src.name}")
                 files.append(dict(label=f["label"] + " ↗", href=f"files/{r['id']}-{src.name}"))
-        approve.append(dict(id=r["id"], company=r["company"], title=r["title"], location=r["location"], url=r["url"], status=r["status"],
+        review = []
+        for name in (f"{r['id']}-review.json", f"{r['id']}-review-agent.json"):
+            if (apps_dir / name).exists():
+                review += json.loads((apps_dir / name).read_text()).get("flags", [])
+        approve.append(dict(review=review, id=r["id"], company=r["company"], title=r["title"], location=r["location"], url=r["url"], status=r["status"],
                             why=plan.get("why", ""), deadline=plan.get("deadline", ""), answers=plan.get("answers", []),
                             needs=plan.get("needs", []), files=files))
     queue = [dict(id=r["id"], company=r["company"], title=r["title"], location=r["location"], url=r["url"], score=r["score"])

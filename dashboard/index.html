@@ -246,6 +246,7 @@ details.more summary { cursor: pointer; font-size: 13px; color: var(--accent); }
 <main>
   <section class="view" id="today">
     <div class="hero"><h1 id="greet">Good morning.</h1><p id="summary">Loading your applications…</p></div>
+    <div id="alerts" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
     <div class="stats" id="stats"></div>
     <div><div class="sec-h"><h2>Radar contact</h2><span>One recruiter or hiring manager a day. Not asking for anything, just on their radar.</span></div><div id="radar"></div></div>
     <div><div class="sec-h"><h2>Reach out now</h2><span>Inside the 48-hour window after applying</span></div><div class="cards" id="due"></div></div>
@@ -418,6 +419,9 @@ function renderToday() {
   const due = apps.filter(a => a.outreach && windowLeft(a) > 0 && undecided(a)).sort((x, y) => windowLeft(x) - windowLeft(y));
   const h = new Date().getHours();
   $('greet').textContent = `${h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'}${me().first ? ', ' + me().first : ''}.`;
+  const hot = apps.filter(a => ['oa', 'interview', 'offer'].includes(a.outcome) && (Date.now() - new Date(a.outcome_at).getTime()) < 14 * 864e5);
+  const hotName = { oa: 'Assessment', interview: 'Interview', offer: 'Offer' };
+  $('alerts').replaceChildren(...hot.map(a => el('a', { href: a.url, target: '_blank', rel: 'noopener noreferrer', style: 'display:block;padding:12px 16px;border-radius:12px;border:2px solid var(--green);color:inherit;text-decoration:none;font-weight:600' }, `${hotName[a.outcome]}: ${a.company}, ${a.title}. Check your email.`)));
   const bits = [due.length ? `${due.length} message${due.length > 1 ? 's' : ''} to send` : 'No messages waiting',
     needs.length ? `${needs.length} application${needs.length > 1 ? 's' : ''} need${needs.length > 1 ? '' : 's'} you` : 'nothing needs you',
     `${sentToday.length} sent today`];
@@ -673,6 +677,7 @@ function renderApprove() {
         el('div', { class: 'meta' }, el('div', { class: 'co' }, j.company, j.location ? ` · ${j.location}` : ''), el('h3', {}, j.title)),
         decided && decided !== 'self' ? pill(decided === 'reject' ? 'skipped' : 'submitted') : null),
       j.why ? el('p', { class: 'why' }, j.why) : null,
+      (j.review || []).length ? el('div', { style: 'border:2px solid var(--red);border-radius:12px;padding:10px 14px;margin:8px 0' }, el('strong', {}, 'Reviewer flagged'), ...j.review.map(f => el('div', { style: 'margin-top:4px' }, f))) : null,
       el('div', { class: 'links' }, el('a', { href: j.url, target: '_blank', rel: 'noopener' }, 'Posting ↗'),
         ...(j.files || []).map(f => el('a', { href: f.href, target: '_blank', rel: 'noopener' }, f.label))),
       needs.length ? el('div', { class: 'need' }, el('strong', {}, 'Only you can answer these'), ...needs) : null,

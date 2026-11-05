@@ -10,7 +10,7 @@ KEEP_AWAKE=""; command -v caffeinate >/dev/null && KEEP_AWAKE="caffeinate -i"
 ALLOWED=(
   "Bash(./fetch_jobs.py find *)" "Bash(./fetch_jobs.py add *)" "Bash(./fetch_jobs.py scout-rank *)" "Bash(./fetch_jobs.py list *)"
   "Bash(curl -s *)" "Bash(curl -sL *)" "WebSearch" "WebFetch"
-  "Read($DIR/**)" "Write($DIR/scout/**)" "Edit($DIR/scout/**)"
+  "Read(/$DIR/**)" "Edit(/$DIR/scout/**)"
 )
 {
   echo "=== $(date) ==="

@@ -44,7 +44,8 @@ Everything lives in this folder. If `profile.toml` is empty, stop and tell the u
 ```bash
 ./fetch_jobs.py quota          # dry_run, cap, remaining for today
 ./fetch_jobs.py pull-approvals # moves Approve-tab clicks into the tracker
-./fetch_jobs.py fetch          # refresh all company feeds
+./fetch_jobs.py fetch          # refresh all company feeds, and fetch posting text for title-only feeds
+./fetch_jobs.py adopt-boards   # add boards the scout found, once each one answers
 ```
 
 ### 0. Email sync (only if the Gmail tools are connected)
@@ -80,6 +81,8 @@ Screenshots or lists of postings the user shares themselves are fine to use the 
 
 Workday and other non-submittable jobs never become cards. Give the user a short list of the best ones with the resume built and the answers ready, and offer to fill the form once they've signed in.
 
+Then run `./fetch_jobs.py review ID` (`set-status ID ready` runs it too), and use the `application-reviewer` agent on the job if it is available. Fix real mistakes in your own plan. Flags that remain show on the card.
+
 ### 2a. Submit what was approved
 
 1. `./fetch_jobs.py pull-approvals` (ready -> approved or skipped; answers land in `applications/<ID>-approval.json`).
@@ -96,6 +99,12 @@ Never open LinkedIn pages or use any LinkedIn tool. A search-result snippet may 
 **Note:** 180-260 characters, never over 300. (1) First name, then a specific sourced hook about them or their team, cited in `## Hook source`; never invent or stretch a hook. (2) One fact about the user with a number. (3) The role, in a short clause. (4) One short question they can answer in a sentence. No praise of the company, no "passionate/excited/leverage/thrilled/cutting-edge".
 
 **Message:** under 120 words. `Hi <First or [Name]>,`, one line on who the user is and their strongest relevant experience, 2-3 bullets of facts matched to the posting, links you've confirmed are live, and one short question. Start with an italic line saying it's draft material to rewrite. Facts only from the tailored resume, `facts.toml` and `context/`.
+
+Then backfill: `./fetch_jobs.py outreach-due --limit 5` lists older submissions with no draft. Write up to 5 per run, newest first.
+
+### Postings the user shares
+
+For any posting shared in chat or a screenshot: `./fetch_jobs.py find`, then `add` it from the company's own site if it is new, and look for that company's job board. Add any new board to `scout/boards.md` as `company | ats | token | why it fits`.
 
 ### 4. Daily radar contact (never sent)
 
