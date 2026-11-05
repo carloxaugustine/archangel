@@ -645,17 +645,20 @@ function renderApprove() {
   if (!jobs.length) { $('alist').replaceChildren(el('div', { class: 'empty' }, 'Nothing waiting for approval.')); return; }
   $('alist').replaceChildren(...jobs.map(j => {
     const rec = APPROVALS[j.id];
-    const decided = j.status === 'approved' ? 'approve' : rec?.action;
+    const decided = j.status === 'approved' ? 'approve' : j.status === 'self' ? (rec?.action === 'sent' ? 'sent' : 'self') : rec?.action;
+    const copyBtn = text => el('button', { class: 'btn', onclick: () => navigator.clipboard.writeText(text).then(() => toast('Copied')) }, 'Copy');
     const inputs = {};
     const needs = (j.needs || []).map(n => {
       const f = n.long ? el('textarea', { rows: 3 }) : el('input', { type: 'text' });
-      f.value = rec?.answers?.[n.key] ?? n.value ?? ''; if (decided) f.disabled = true; inputs[n.key] = f;
-      return el('label', {}, n.label, n.hint ? el('span', { class: 'hint' }, n.hint) : null, f);
+      f.value = rec?.answers?.[n.key] ?? n.value ?? ''; if (decided && decided !== 'self') f.disabled = true; inputs[n.key] = f;
+      return el('label', {}, n.label, n.hint ? el('span', { class: 'hint' }, n.hint) : null, f, decided === 'self' ? el('button', { class: 'btn', onclick: e => { e.preventDefault(); navigator.clipboard.writeText(f.value).then(() => toast('Copied')); } }, 'Copy') : null);
     });
     const state = el('span', { class: 'state' },
       j.status === 'approved' ? 'Approved. The agent has picked it up and will submit it.' :
       decided === 'approve' ? `Approved ${fmtDate(rec.at)}. It goes out on the agent's next run.` :
-      decided === 'reject' ? 'Marked as not this one.' : j.deadline ? `Closes ${j.deadline}` : '');
+      decided === 'reject' ? 'Marked as not this one.' :
+      decided === 'self' ? 'Yours to submit. Open the posting, copy each answer below, then mark it sent.' :
+      decided === 'sent' ? 'Marked as sent by you.' : j.deadline ? `Closes ${j.deadline}` : '');
     const btn = (label, cls, action) => el('button', { class: `btn ${cls}`, onclick: async e => {
       const answers = Object.fromEntries(Object.entries(inputs).map(([k, f]) => [k, f.value.trim()]));
       if (action === 'approve') { const missing = (j.needs || []).filter(n => n.required && !answers[n.key]); if (missing.length) { toast(`Fill in: ${missing.map(n => n.label).join(', ')}`); return; } }
@@ -664,17 +667,17 @@ function renderApprove() {
       catch (err) { toast(`Could not save: ${err.message}`); }
       renderApprove();
     } }, label);
-    const acts = decided ? [state, j.status === 'ready' ? btn('Undo', '', 'undo') : null] : [btn('Approve & submit', 'go big', 'approve'), btn('Not this one', '', 'reject'), state];
+    const acts = decided ? [state, decided === 'self' ? btn('I sent it', 'go', 'sent') : null, j.status === 'ready' ? btn('Undo', '', 'undo') : null] : [btn('Approve & submit', 'go big', 'approve'), btn("I'll submit this one", '', 'self'), btn('Not this one', '', 'reject'), state];
     return el('article', { class: `acard${decided ? ' done' : ''}` },
       el('div', { class: 'top' }, el('div', { class: 'logo', style: `background:${hue(j.company)}` }, initials(j.company)),
         el('div', { class: 'meta' }, el('div', { class: 'co' }, j.company, j.location ? ` · ${j.location}` : ''), el('h3', {}, j.title)),
-        decided ? pill(decided === 'approve' ? 'submitted' : 'skipped') : null),
+        decided && decided !== 'self' ? pill(decided === 'reject' ? 'skipped' : 'submitted') : null),
       j.why ? el('p', { class: 'why' }, j.why) : null,
       el('div', { class: 'links' }, el('a', { href: j.url, target: '_blank', rel: 'noopener' }, 'Posting ↗'),
         ...(j.files || []).map(f => el('a', { href: f.href, target: '_blank', rel: 'noopener' }, f.label))),
       needs.length ? el('div', { class: 'need' }, el('strong', {}, 'Only you can answer these'), ...needs) : null,
-      (j.answers || []).length ? el('details', { class: 'more' }, el('summary', {}, `Every answer the agent will give (${j.answers.length})`),
-        el('dl', { class: 'qa' }, ...j.answers.flatMap(([q, a]) => [el('dt', {}, q), el('dd', {}, a)]))) : null,
+      (j.answers || []).length ? el('details', { class: 'more', open: decided === 'self' }, el('summary', {}, decided === 'self' ? `Your answers (${j.answers.length})` : `Every answer the agent will give (${j.answers.length})`),
+        el('dl', { class: 'qa' }, ...j.answers.flatMap(([q, a]) => [el('dt', {}, q), el('dd', {}, a, decided === 'self' ? copyBtn(a) : null)]))) : null,
       el('div', { class: 'acts' }, ...acts));
   }));
 }

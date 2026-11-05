@@ -62,7 +62,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             recs.pop(jid, None)
             STORE.write_text(json.dumps(recs, indent=1))
             return self.send_json({"ok": True, "id": jid, "action": "undo"})
-        if action not in ("approve", "reject"):
+        if action not in ("approve", "reject", "self", "sent"):
             return self.send_json({"error": "bad action"}, 400)
         answers = {k: v[:20000] for k, v in (body.get("answers") or {}).items() if isinstance(v, str) and len(k) < 80}
         rec = {"action": action, "at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "answers": answers}

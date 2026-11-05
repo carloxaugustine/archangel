@@ -486,12 +486,21 @@ def cmd_pull_approvals(a):
             con.execute("UPDATE jobs SET status='approved', updated_at=?, note=? WHERE id=?",
                         (now, f"approved on the dashboard {rec.get('at', '')[:16]}", jid))
             moved.append((jid, "approved"))
+        elif rec.get("action") == "self" and row["status"] == "ready":
+            (HERE / "applications" / f"{jid}-approval.json").write_text(json.dumps(rec, indent=1))
+            con.execute("UPDATE jobs SET status='self', updated_at=?, note=? WHERE id=?",
+                        (now, f"you chose to submit this yourself {rec.get('at', '')[:16]}", jid))
+            moved.append((jid, "self"))
+        elif rec.get("action") == "sent" and row["status"] in ("ready", "self"):
+            con.execute("UPDATE jobs SET status='submitted', applied_by=?, submitted_at=?, updated_at=?, note=? WHERE id=?",
+                        ("user", now, now, f"you submitted this yourself {rec.get('at', '')[:16]}", jid))
+            moved.append((jid, "submitted"))
         elif rec.get("action") == "reject" and row["status"] == "ready":
             con.execute("UPDATE jobs SET status='skipped', updated_at=?, note=? WHERE id=?",
                         (now, f"rejected on the dashboard {rec.get('at', '')[:16]}", jid))
             moved.append((jid, "skipped"))
         con.commit()
-        if row["status"] in ("ready", "approved", "submitted", "skipped"):
+        if row["status"] in ("ready", "approved", "submitted", "skipped", "self"):
             recs.pop(key)
     APPROVALS.write_text(json.dumps(recs, indent=1))
     for jid, st in moved:

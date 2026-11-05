@@ -75,7 +75,8 @@ Screenshots or lists of postings the user shares themselves are fine to use the 
 2. **Tailor the resume** per `resume-builder/guidelines.md`: write `applications/<ID>-resume-spec.json` and build it. Fix what it rejects and rebuild until it passes.
 3. Load the browser tools. In your own new window, open `apply_url` and read every form question without typing or submitting. Close your tabs.
 4. Write `applications/<ID>-plan.json`: `{"why": one line, "deadline": "" or the stated date, "answers": [[question, planned answer], ...], "needs": [{"key", "label", "required": true, "value": prefill or "", "hint"}], "extra_files": [{"label", "path"}]}`. Anything the sources don't cover goes in `needs`. Drafted essays and cover letters go in `needs` with `long: true` and the draft as `value`.
-5. `./fetch_jobs.py set-status ID ready --note "prepared <date>; waiting on the Approve tab"`.
+5. The user can choose "I'll submit this one" on a card (status `self`). Those are theirs: never fill or submit them.
+6. `./fetch_jobs.py set-status ID ready --note "prepared <date>; waiting on the Approve tab"`.
 
 Workday and other non-submittable jobs never become cards. Give the user a short list of the best ones with the resume built and the answers ready, and offer to fill the form once they've signed in.
 

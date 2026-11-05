@@ -120,7 +120,7 @@ def main():
     # Approve tab: jobs the agent prepared (status ready) or you approved, with the plan in applications/<id>-plan.json
     approve = []
     (DIST / "files").mkdir(exist_ok=True)
-    for r in con.execute("SELECT * FROM jobs WHERE status IN ('ready','approved') ORDER BY status DESC, score DESC"):
+    for r in con.execute("SELECT * FROM jobs WHERE status IN ('ready','approved','self') ORDER BY status DESC, score DESC"):
         plan_p = apps_dir / f"{r['id']}-plan.json"
         plan = json.loads(plan_p.read_text()) if plan_p.exists() else {}
         files = []
