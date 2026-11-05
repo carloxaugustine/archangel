@@ -448,3 +448,8 @@ token = "pacificfusion"
 name = "AV"
 ats = "workday"
 token = "avav|wd1|AVAV"
+
+[[company]]
+name = "Lockheed Martin"
+ats = "eightfold"
+token = "lockheedmartin.eightfold.ai|lockheedmartin.com"

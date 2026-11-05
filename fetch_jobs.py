@@ -27,7 +27,10 @@ import json
 import re
 import sqlite3
 import sys
+import time
 import tomllib
+import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -167,6 +170,34 @@ def fetch_board(c):
             out.append(dict(uid=f"rc:{tok}:{j['id']}", title=j["title"], location=j.get("location", ""), team=j.get("department") or "",
                             url=j.get("careers_url", ""), apply_url=j.get("careers_apply_url") or j.get("careers_url", ""),
                             description=plain((j.get("description") or "") + " " + (j.get("requirements") or "")), posted=j.get("published_at", "")))
+    elif ats == "eightfold":
+        # token "host|domain", e.g. "lockheedmartin.eightfold.ai|lockheedmartin.com"; the search API its robots.txt allows
+        host, domain = tok.split("|")
+        start, seen = 0, set()
+        while start < 500:
+            q = urllib.parse.urlencode({"domain": domain, "query": "intern", "location": "", "start": start, "sort_by": "timestamp"})
+            if start:
+                time.sleep(4)  # this API rate-limits fast paging
+            try:
+                data = get(f"https://{host}/api/pcsx/search?{q}").get("data") or {}
+            except urllib.error.HTTPError as e:
+                if e.code != 429:
+                    raise
+                time.sleep(int(e.headers.get("Retry-After") or 60))  # back off as asked, once
+                data = get(f"https://{host}/api/pcsx/search?{q}").get("data") or {}
+            posts = data.get("positions") or []
+            for j in posts:
+                if j["id"] in seen:
+                    continue
+                seen.add(j["id"])
+                ts = j.get("postedTs") or j.get("creationTs")
+                url = f"https://{host}{j.get('positionUrl', '')}"
+                out.append(dict(uid=f"ef:{host}:{j['id']}", ref=str(j.get("displayJobId") or ""), title=j.get("name", ""), location="; ".join(j.get("standardizedLocations") or j.get("locations") or []),
+                                team=j.get("department") or "", url=url, apply_url=url, description="",
+                                posted=dt.datetime.fromtimestamp(ts).isoformat(timespec="seconds") if ts else ""))
+            start += len(posts)
+            if not posts or start >= (data.get("count") or 0):
+                break
     elif ats == "workday":
         # token "tenant|wdN|site", e.g. "lockheedmartin|wd1|LMJobs"; search "intern" and page through results
         tenant, wd, site = tok.split("|")
@@ -281,6 +312,8 @@ def same_posting(con, j):
     """id of an already-tracked row for the same posting (same ATS id, or same company + title + location), else None."""
     key = posting_key(j.get("url")) or posting_key(j.get("apply_url"))
     for r in con.execute("SELECT id, url, apply_url, title, location FROM jobs WHERE lower(company)=lower(?)", (j["company"],)):
+        if j.get("ref") and (r["title"] or "").strip().endswith(f"({j['ref']})"):
+            return r["id"]  # confirmation emails name the requisition, e.g. "Test Engineering Intern (12345)"
         if key and key in ((posting_key(r["url"]), posting_key(r["apply_url"]))):
             return r["id"]
         if r["title"].strip().lower() == j["title"].strip().lower() and (r["location"] or "")[:20] == (j["location"] or "")[:20]:
@@ -319,7 +352,7 @@ def cmd_fetch(a):
                                 (j["uid"], j["company"], j["ats"], j["title"], j["location"], j["team"], j["url"], j["apply_url"],
                                  j["description"], j["posted"], cat, score(j, cat), RESUMES[cat], now, now))
     # postings that vanished from a feed that fetched fine are closed
-    ok_prefixes = tuple(f"{ {'greenhouse': 'gh', 'lever': 'lv', 'ashby': 'ab', 'smartrecruiters': 'sr', 'workable': 'wk', 'recruitee': 'rc', 'workday': 'wd', 'gem': 'gm', 'phenom': 'ph'}[c['ats']] }:{c['token'].split('|')[0]}:".replace(" ", "")
+    ok_prefixes = tuple(f"{ {'greenhouse': 'gh', 'lever': 'lv', 'ashby': 'ab', 'smartrecruiters': 'sr', 'workable': 'wk', 'recruitee': 'rc', 'workday': 'wd', 'eightfold': 'ef', 'gem': 'gm', 'phenom': 'ph'}[c['ats']] }:{c['token'].split('|')[0]}:".replace(" ", "")
                         for c in CFG["company"] if not any(e.startswith(c["name"] + ":") for e in errors))
     for r in con.execute("SELECT uid FROM jobs WHERE source='feed' AND status IN ('new','shortlisted')").fetchall():
         if r["uid"].startswith(ok_prefixes) and r["uid"] not in seen:
