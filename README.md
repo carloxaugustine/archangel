@@ -1,22 +1,39 @@
-# Archangel
+<div align="center">
 
-An internship search agent that runs in Claude Code on your own computer. It finds postings, tailors a one-page resume for each job, prepares the application, and waits for your approval before anything is sent.
+<img src="docs/boot.svg" alt="ARCHANGEL boot screen: an internship search agent for Claude Code, with approval and dry-run gates on by default." width="100%">
 
+<br>
+
+![Runs on Claude Code](https://img.shields.io/badge/RUNS_ON-CLAUDE_CODE-FFFF55?style=flat-square&labelColor=0000AA)
+![Dry run by default](https://img.shields.io/badge/DRY__RUN-ON_BY_DEFAULT-55FF55?style=flat-square&labelColor=0000AA)
+![Approval required](https://img.shields.io/badge/APPROVAL-REQUIRED-FF5555?style=flat-square&labelColor=0000AA)
+![Local only](https://img.shields.io/badge/DASHBOARD-127.0.0.1-55FFFF?style=flat-square&labelColor=0000AA)
+![MIT](https://img.shields.io/badge/LICENSE-MIT-FFFFFF?style=flat-square&labelColor=0000AA)
+
+**An internship search agent that runs in Claude Code on your own computer.**<br>
+It finds postings, tailors a one-page resume for each job, prepares the application,<br>and waits for your approval before anything is sent.
+
+**[`INSTALL`](#-01--install)** · **[`USE`](#-02--daily-use)** · **[`RULES`](#-03--hard-rules)** · **[`DATA`](#-04--your-data)** · **[`STATUS`](#-05--status)** · **[`FIX`](#-06--troubleshooting)**
+
+</div>
+
+<img src="docs/pipeline.svg" alt="Six stages: find, rank, tailor, approve, submit, follow up." width="100%">
+
+```text
+SOURCES   job boards · GitHub lists · alert emails · scout agent
+   ↓
+TRACKER   removes duplicates, filters, scores fit
+   ↓
+PREPARE   tailored resume + drafted form answers
+   ↓
+APPROVE   you edit, approve or skip on a local dashboard
+   ↓
+SUBMIT    Greenhouse and Lever go out from your browser. Other sites, you press Submit.
+   ↓
+FOLLOW    outreach drafts you rewrite and send yourself
 ```
-Job boards, GitHub lists, alert emails, scout
-        ↓
-Tracker: removes duplicates, filters, scores fit
-        ↓
-Prepare: tailored resume + drafted form answers
-        ↓
-Approve: you edit, approve or skip on a local dashboard
-        ↓
-Submit: Greenhouse and Lever go out from your browser. Other sites, you press Submit.
-        ↓
-Follow up: outreach drafts you rewrite and send yourself
-```
 
-## Setup
+## ▓ 01 // INSTALL
 
 You need a Mac or Linux computer and a paid Claude plan.
 
@@ -42,7 +59,7 @@ claude
 
 Then type `/internship-setup`. It reads your documents, asks about what's missing, builds a test resume, and tunes the search to your field. Allow 15 to 30 minutes.
 
-## Daily use
+## ▓ 02 // DAILY USE
 
 | Do this | To |
 |---|---|
@@ -53,27 +70,58 @@ Then type `/internship-setup`. It reads your documents, asks about what's missin
 
 To fill forms, install the Claude in Chrome extension and start with `claude --chrome`. To track confirmations and replies, connect Gmail under Connectors in your claude.ai settings.
 
-## What it won't do
+## ▓ 03 // HARD RULES
 
-- **Make things up.** Forms use only your profile and approved answers. Resumes can only use bullets from your own bank.
-- **Send anything without approval.** New installs also start in dry-run mode: it fills forms and stops before Submit. Set `dry_run = false` in `config.toml` when you trust it.
-- **Submit outside Greenhouse and Lever.** On Workday and other sites it can fill the form after you sign in, and you press Submit.
-- **Automate LinkedIn, solve CAPTCHAs, enter passwords, or message anyone.** Outreach is drafts only.
+```diff
++ ALLOW  fill forms from your profile and answers you approved
++ ALLOW  build resumes from bullets in your own bank
++ ALLOW  submit Greenhouse and Lever applications you approved
 
-## Your data stays yours
+! HOLD   new installs start in dry-run mode and stop before Submit
+! HOLD   Workday and other sites: it fills after you sign in, you press Submit
+! HOLD   terms and truthfulness checkboxes stay yours
+
+- DENY   inventing a fact, a number or a skill
+- DENY   sending anything without your approval
+- DENY   automating LinkedIn, solving CAPTCHAs or entering passwords
+- DENY   messaging anyone: outreach is drafts only
+```
+
+Set `dry_run = false` in `config.toml` when you trust it.
+
+## ▓ 04 // YOUR DATA
 
 Your profile, resumes, applications and tracker stay in this folder, and `.gitignore` keeps them out of git. The dashboard runs only on your computer. Claude processes what you give it under your own Claude account, and job sites receive what you submit.
 
 Before pushing a fork, run `git status` and confirm no personal files are listed.
 
-## Be aware
+## ▓ 05 // STATUS
+
+This is new. It came out of one person's real search and has had one round of testing as a template.
+
+```diff
++ TESTED    clean install, resume builder, job fetching, approval flow, dashboard
++ TESTED    setup interview, run automatically on a made-up student
+! NOT YET   setup with a real person answering the questions
+! NOT YET   form filling, Gmail sync and scheduling in this version
+! NOT YET   Linux
+```
+
+Check the first few applications closely, and open an issue when something breaks.
+
+**Also worth knowing:**
 
 - You're responsible for everything submitted in your name. Read each application, especially questions about work authorization or legal status.
 - Some job sites restrict automated applications. Check the rules of the sites you use and decide for yourself.
 - The starter company list leans toward aerospace, defense and hardware. Setup trims it for your field, but other fields will need more boards added.
 - Applications alone rarely do it. Outreach to real people usually matters more.
 
-## Troubleshooting
+## ▓ 06 // TROUBLESHOOTING
+
+<details>
+<summary><b>Open the fault table</b></summary>
+
+<br>
 
 | Problem | Try |
 |---|---|
@@ -83,4 +131,12 @@ Before pushing a fork, run `git status` and confirm no personal files are listed
 | A company is missing | `./probe_boards.py companyname` finds its board, then add it to `config.toml` |
 | Browser tools unavailable | Start with `claude --chrome` and check the extension is on |
 
-MIT licensed. Resume template by Jake Gutierrez.
+</details>
+
+<br>
+
+<div align="center">
+
+`MIT LICENSE` · `RESUME TEMPLATE BY JAKE GUTIERREZ` · `NAMED FOR LOCKHEED'S ARCHANGEL DESIGN SERIES, WHICH LED TO THE A-12`
+
+</div>
