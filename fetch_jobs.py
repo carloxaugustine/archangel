@@ -308,23 +308,41 @@ def posting_key(url):
     return m.group(m.lastindex or 0) if m else ""
 
 
+class PostingIndex:
+    """Hash maps over tracked postings, for constant-time duplicate checks: same requisition id, same ATS id,
+    or same company + title + location. The earliest row wins, as it did with the old linear scan."""
+
+    def __init__(self, con):
+        self.refs, self.keys, self.titles = {}, {}, {}
+        for r in con.execute("SELECT id, company, title, location, url, apply_url FROM jobs ORDER BY id"):
+            self.add(r["id"], r["company"], r["title"], r["location"], r["url"], r["apply_url"])
+
+    def add(self, row_id, company, title, location, url, apply_url):
+        co, title = (company or "").lower(), (title or "").strip()
+        if (m := re.search(r"\((\d+)\)$", title)):  # confirmation emails name the requisition: "Test Engineering Intern (12345)"
+            self.refs.setdefault((co, m.group(1)), row_id)
+        for k in filter(None, (posting_key(url), posting_key(apply_url))):
+            self.keys.setdefault((co, k), row_id)
+        self.titles.setdefault((co, title.lower(), (location or "")[:20]), row_id)
+
+    def find(self, j):
+        co = j["company"].lower()
+        key = posting_key(j.get("url")) or posting_key(j.get("apply_url"))
+        hits = [self.refs.get((co, j["ref"])) if j.get("ref") else None, self.keys.get((co, key)) if key else None,
+                self.titles.get((co, j["title"].strip().lower(), (j["location"] or "")[:20]))]
+        return min((h for h in hits if h), default=None)
+
+
 def same_posting(con, j):
-    """id of an already-tracked row for the same posting (same ATS id, or same company + title + location), else None."""
-    key = posting_key(j.get("url")) or posting_key(j.get("apply_url"))
-    for r in con.execute("SELECT id, url, apply_url, title, location FROM jobs WHERE lower(company)=lower(?)", (j["company"],)):
-        if j.get("ref") and (r["title"] or "").strip().endswith(f"({j['ref']})"):
-            return r["id"]  # confirmation emails name the requisition, e.g. "Test Engineering Intern (12345)"
-        if key and key in ((posting_key(r["url"]), posting_key(r["apply_url"]))):
-            return r["id"]
-        if r["title"].strip().lower() == j["title"].strip().lower() and (r["location"] or "")[:20] == (j["location"] or "")[:20]:
-            return r["id"]
-    return None
+    """id of an already-tracked row for the same posting, else None. Use one PostingIndex when checking many."""
+    return PostingIndex(con).find(j)
 
 
 def cmd_fetch(a):
     con = db()
     now = dt.datetime.now().isoformat(timespec="seconds")
     seen, errors, new = set(), [], 0
+    index = PostingIndex(con)
     with ThreadPoolExecutor(8) as ex:
         futs = {ex.submit(fetch_board, c): c for c in CFG["company"]}
         for f, c in futs.items():
@@ -341,16 +359,17 @@ def cmd_fetch(a):
                     con.execute("UPDATE jobs SET title=?, location=?, description=?, last_seen=?, category=?, score=?, "
                                 "status=CASE WHEN status='closed' THEN 'new' ELSE status END WHERE uid=?",
                                 (j["title"], j["location"], j["description"], now, cat, score(j, cat), j["uid"]))
-                elif (dup := same_posting(con, j)):
+                elif (dup := index.find(j)):
                     con.execute("UPDATE jobs SET uid=?, last_seen=?, posted=CASE WHEN posted='' THEN ? ELSE posted END, "
                                 "description=CASE WHEN description='' THEN ? ELSE description END WHERE id=?",
                                 (j["uid"], now, j["posted"], j["description"], dup))
                 else:
                     new += 1
-                    con.execute("INSERT INTO jobs (uid, company, ats, title, location, team, url, apply_url, description, posted, "
-                                "category, score, resume, first_seen, last_seen) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                                (j["uid"], j["company"], j["ats"], j["title"], j["location"], j["team"], j["url"], j["apply_url"],
-                                 j["description"], j["posted"], cat, score(j, cat), RESUMES[cat], now, now))
+                    cur = con.execute("INSERT INTO jobs (uid, company, ats, title, location, team, url, apply_url, description, posted, "
+                                      "category, score, resume, first_seen, last_seen) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                                      (j["uid"], j["company"], j["ats"], j["title"], j["location"], j["team"], j["url"], j["apply_url"],
+                                       j["description"], j["posted"], cat, score(j, cat), RESUMES[cat], now, now))
+                    index.add(cur.lastrowid, j["company"], j["title"], j["location"], j["url"], j["apply_url"])
     # postings that vanished from a feed that fetched fine are closed
     ok_prefixes = tuple(f"{ {'greenhouse': 'gh', 'lever': 'lv', 'ashby': 'ab', 'smartrecruiters': 'sr', 'workable': 'wk', 'recruitee': 'rc', 'workday': 'wd', 'eightfold': 'ef', 'gem': 'gm', 'phenom': 'ph'}[c['ats']] }:{c['token'].split('|')[0]}:".replace(" ", "")
                         for c in CFG["company"] if not any(e.startswith(c["name"] + ":") for e in errors))
@@ -379,6 +398,9 @@ def fetch_lists():
     con = db()
     now = dt.datetime.now().isoformat(timespec="seconds")
     added, dupes, errors = 0, 0, []
+    rows = con.execute("SELECT uid, url, company, title FROM jobs").fetchall()
+    uids, urls = {r["uid"] for r in rows}, {r["url"] for r in rows}
+    names = {((r["company"] or "").lower(), (r["title"] or "").lower()) for r in rows}
     for tag, repo in LISTS:
         r = subprocess.run(["gh", "api", "-H", "Accept: application/vnd.github.raw",
                             f"repos/{repo}/contents/.github/scripts/listings.json?ref=dev"], capture_output=True, text=True, timeout=120)
@@ -395,9 +417,10 @@ def fetch_lists():
             if not keep(j) or (locs and not any(is_us(l) for l in locs)):
                 continue
             uid = f"ls:{tag}:{x['id']}"
-            if con.execute("SELECT 1 FROM jobs WHERE uid=? OR url=? OR (lower(company)=lower(?) AND lower(title)=lower(?))",
-                           (uid, x["url"], x["company_name"], x["title"])).fetchone():
+            name = (x["company_name"].lower(), x["title"].lower())
+            if uid in uids or x["url"] in urls or name in names:
                 dupes += 1; continue
+            uids.add(uid); urls.add(x["url"]); names.add(name)
             cat = classify(j)
             posted = dt.datetime.fromtimestamp(x["date_posted"]).isoformat(timespec="seconds") if x.get("date_posted") else ""
             ats = "greenhouse" if "greenhouse.io" in x["url"] else "lever" if "lever.co" in x["url"] else "ashby" if "ashbyhq.com" in x["url"] else "other"
@@ -458,6 +481,8 @@ def cmd_list(a):
         q += " AND status NOT IN ('closed','skipped')"
     if a.min_score is not None:
         q += " AND score>=?"; args.append(a.min_score)
+    if a.company:
+        q += " AND lower(company) LIKE ?"; args.append(f"%{a.company.lower()}%")
     rows = [r for r in db().execute(q + " ORDER BY score DESC, posted DESC, company", args) if not a.auto or auto_ok(r)]
     print(f"{'id':>4} {'sc':>3} {'auto':4} {'status':11} {'cat':10} {'company':16} {'location':24} title")
     for r in rows[: a.limit]:
@@ -761,7 +786,7 @@ def main():
     p = sp.add_parser("fetch"); p.add_argument("--no-lists", action="store_true", help="skip the GitHub internship lists"); p.set_defaults(f=cmd_fetch)
     sp.add_parser("fetch-lists", help="import matching internships from the GitHub lists in config.toml").set_defaults(f=cmd_fetch_lists)
     p = sp.add_parser("list"); p.add_argument("--status"); p.add_argument("--min-score", type=int)
-    p.add_argument("--auto", action="store_true", help="only auto-submit-eligible rows"); p.add_argument("--limit", type=int, default=60)
+    p.add_argument("--auto", action="store_true", help="only auto-submit-eligible rows"); p.add_argument("--limit", type=int, default=60); p.add_argument("--company", help="only companies containing this text")
     p.set_defaults(f=cmd_list)
     p = sp.add_parser("show"); p.add_argument("id", type=int); p.add_argument("--chars", type=int, default=3000); p.set_defaults(f=cmd_show)
     p = sp.add_parser("set-status"); p.add_argument("id", type=int)
