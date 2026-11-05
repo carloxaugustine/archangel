@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""Boot screen, then Claude Code. Every status line is a live check of this folder.
+
+    ./archangel               boot, then start Claude Code (extra arguments go to claude)
+    ./archangel --boot-only   boot and exit
+    ./archangel --fast        no typing delay
+"""
+import datetime as dt
+import os
+import shutil
+import sqlite3
+import sys
+import time
+from pathlib import Path
+
+try:
+    import tomllib
+except ImportError:
+    sys.exit("archangel needs Python 3.11 or newer. Run ./setup.sh first.")
+
+HERE = Path(__file__).resolve().parent
+ARGS = sys.argv[1:]
+BOOT_ONLY = "--boot-only" in ARGS
+FAST = "--fast" in ARGS or not sys.stdout.isatty()
+COLOR = sys.stdout.isatty() or "--color" in ARGS
+PASS = [a for a in ARGS if a not in ("--boot-only", "--fast", "--color")]
+
+BG, YEL, CY, WH, GR, RED, MAG, GRN, BLK = "44", "93", "96", "97", "37", "91", "95", "92", "30"
+FONT = {"A": "01110 10001 10001 11111 10001 10001 10001", "R": "11110 10001 10001 11110 10100 10010 10001",
+        "C": "01111 10000 10000 10000 10000 10000 01111", "H": "10001 10001 10001 11111 10001 10001 10001",
+        "N": "10001 11001 10101 10011 10001 10001 10001", "G": "01111 10000 10000 10111 10001 10001 01111",
+        "E": "11111 10000 10000 11110 10000 10000 11111", "L": "10000 10000 10000 10000 10000 10000 11111"}
+
+
+def paint(text, fg=WH, bold=False):
+    if not COLOR:
+        return text
+    return f"\033[{'1;' if bold else ''}{fg};{BG}m{text}\033[{WH};{BG}m"
+
+
+def row(text=""):
+    """One line on the blue screen; \\033[K fills the rest of the line with blue."""
+    print(f"\033[{WH};{BG}m{text}\033[K\033[0m" if COLOR else text, flush=True)
+
+
+def inside(px, py, poly):
+    hit = False
+    for i in range(len(poly)):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % len(poly)]
+        if (y1 > py) != (y2 > py) and px < (x2 - x1) * (py - y1) / (y2 - y1) + x1:
+            hit = not hit
+    return hit
+
+
+def plane_rows():
+    """A-12 plan view, nose left, drawn with half blocks: 2 pixels per character."""
+    half = [(0, 0), (22, 2.2), (44, 4.5), (60, 7), (88, 29), (97, 29), (93, 12), (104, 8), (120, 3), (122, 0)]
+    hull = half + [(x, -y) for x, y in reversed(half[1:-1])]
+    nac = [(58, 12), (66, 10), (102, 10), (106, 13), (102, 18), (66, 18), (58, 15)]
+    nac2 = [(x, -y) for x, y in nac]
+    step = 4.0
+
+    def pixel(cx, cy):
+        if inside(cx, cy, nac) or inside(cx, cy, nac2):
+            return CY
+        return WH if inside(cx, cy, hull) else None
+
+    rows = []
+    y = -30.0
+    while y < 30:
+        line = ""
+        for c in range(32):
+            top, bot = pixel(c * step + 2, y + 1), pixel(c * step + 2, y + 3)
+            if COLOR:
+                fg, ch = (top or bot, "▀" if top and not bot else "▄" if bot and not top else "█") if (top or bot) else (WH, " ")
+                if top and bot and top != bot:
+                    line += f"\033[{top};{int(bot) + 10}m▀\033[{WH};{BG}m"
+                else:
+                    line += f"\033[{fg};{BG}m{ch}"
+            else:
+                line += "#" if (top or bot) else " "
+        rows.append(line + (f"\033[{WH};{BG}m" if COLOR else ""))
+        y += step
+    return rows
+
+
+def title_rows():
+    rows = []
+    for r in range(7):
+        rows.append(" ".join(FONT[ch].split()[r].replace("1", "█").replace("0", " ") for ch in "ARCHANGEL"))
+    return rows
+
+
+def load(name):
+    p = HERE / name
+    try:
+        return tomllib.loads(p.read_text()) if p.exists() else None
+    except tomllib.TOMLDecodeError:
+        return None
+
+
+def checks():
+    """(tag, tag color, text, text color) for each line, read from the real files."""
+    cfg, prof, facts = load("config.toml"), load("profile.toml"), load("resume-builder/facts.toml")
+    out = [("BIOS", CY, f"ARCHANGEL // PYTHON {sys.version.split()[0]} // {dt.datetime.now():%Y-%m-%d %H:%M}", WH)]
+    first = ((prof or {}).get("identity") or {}).get("first_name", "")
+    last = ((prof or {}).get("identity") or {}).get("last_name", "")
+    if first:
+        out.append(("DISK", GRN, f"profile.toml ... loaded for {first} {last}".rstrip(), GR))
+    else:
+        out.append(("DISK", YEL, "profile.toml ... empty, run /internship-setup", YEL))
+    if facts:
+        ent = facts.get("entry", [])
+        bul = sum(len(e.get("bullets", [])) for e in ent)
+        out.append(("DISK", GRN, f"facts.toml ..... {len(ent)} entries, {bul} resume bullets", GR))
+    else:
+        out.append(("DISK", YEL, "facts.toml ..... not built yet, run /internship-setup", YEL))
+    if not cfg:
+        out.append(("FAIL", RED, "config.toml .... missing or unreadable, run ./setup.sh", RED))
+        return out
+    out.append(("NET ", GRN, f"config.toml .... {len(cfg.get('company', []))} company job boards", GR))
+    sub = cfg.get("submit", {})
+    db = HERE / "jobs.db"
+    used = 0
+    if db.exists():
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        try:
+            n = dict(con.execute("SELECT status, COUNT(*) FROM jobs GROUP BY status").fetchall())
+            used = con.execute("SELECT COUNT(*) FROM jobs WHERE status='submitted' AND submitted_at LIKE ?",
+                               (f"{dt.date.today()}%",)).fetchone()[0]
+            out.append(("DB  ", GRN, f"jobs.db ........ {n.get('new', 0)} new, {n.get('submitted', 0)} submitted, "
+                                     f"{n.get('needs_user', 0)} need you", GR))
+            out.append(("DB  ", GRN, f"approve tab .... {n.get('ready', 0)} waiting on you, {n.get('approved', 0)} approved", GR))
+        except sqlite3.Error:
+            out.append(("DB  ", YEL, "jobs.db ........ empty, run ./fetch_jobs.py fetch", YEL))
+        con.close()
+    else:
+        out.append(("DB  ", YEL, "jobs.db ........ no tracker yet, run ./fetch_jobs.py fetch", YEL))
+    gate = sub.get("require_approval", True)
+    out.append(("GATE", YEL if gate else RED, f"require_approval = {str(gate).lower()}" + ("" if gate else " ... WARNING: gate is off"), YEL if gate else RED))
+    dry = sub.get("dry_run", True)
+    out.append(("GATE", YEL if dry else MAG, f"dry_run = {str(dry).lower()} ... " + ("stops before Submit" if dry else "approved jobs will be submitted"), YEL if dry else MAG))
+    cap = sub.get("max_auto_submits_per_day", 0)
+    out.append(("GATE", YEL, f"submit quota ... {max(cap - used, 0)} of {cap} left today", GR))
+    out.append(("DENY", RED, "LinkedIn automation / CAPTCHAs / passwords / invented facts", RED))
+    missing = [t for t in ("tectonic", "pdftotext", "claude") if not shutil.which(t)]
+    if missing:
+        out.append(("TOOL", YEL, "missing: " + ", ".join(missing), YEL))
+    else:
+        out.append(("TOOL", GRN, "tectonic, pdftotext, claude ... found", GR))
+    return out
+
+
+def main():
+    cols, lines = shutil.get_terminal_size((100, 40))
+    if COLOR:
+        print("\033[2J\033[H", end="")
+    bar = "═" * max(cols - 2, 10)
+    row(paint("╔" + bar + "╗", YEL))
+    row()
+    title = title_rows()
+    plane = plane_rows() if cols >= 92 and lines >= 36 else []  # short window: keep the status lines on screen
+    for i in range(max(len(title), len(plane))):
+        left = title[i] if i < len(title) else " " * len(title[0])
+        row("  " + paint(left, YEL, True) + ("   " + plane[i] if i < len(plane) else ""))
+    row()
+    for line in checks():
+        tag, tc, text, c = line
+        row("  " + paint(f"[{tag}]", tc, True) + "  " + paint(text, c))
+        if not FAST:
+            time.sleep(0.14)
+    row()
+    row("  " + paint(">>>>>>", WH, True) + "  " + paint("READY", WH, True))
+    row(paint("╚" + bar + "╝", YEL))
+    if COLOR:
+        print("\033[0m", end="", flush=True)
+    if BOOT_ONLY:
+        return
+    claude = shutil.which("claude")
+    if not claude:
+        sys.exit("Claude Code isn't installed. See the README, step 1.")
+    if not FAST:
+        time.sleep(0.8)
+    os.chdir(HERE)
+    os.execv(claude, [claude, *PASS])
+
+
+if __name__ == "__main__":
+    main()

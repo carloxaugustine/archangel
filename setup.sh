@@ -44,7 +44,7 @@ done
 
 # Scripts normally use "python3"; point them at the right one only if that one is too old.
 if [ "$(command -v python3 || true)" != "$PY" ]; then
-  for f in fetch_jobs.py resume-builder/build_resume.py dashboard/build_site.py dashboard/serve.py; do
+  for f in archangel fetch_jobs.py resume-builder/build_resume.py dashboard/build_site.py dashboard/serve.py; do
     "$PY" - "$f" "$PY" <<'PYEOF'
 import sys
 from pathlib import Path
@@ -52,7 +52,7 @@ p = Path(sys.argv[1]); lines = p.read_text().split("\n"); lines[0] = "#!" + sys.
 PYEOF
   done
 fi
-chmod +x fetch_jobs.py resume-builder/build_resume.py dashboard/build_site.py dashboard/serve.py run_daily.sh run_scout.sh install_schedule.sh
+chmod +x archangel fetch_jobs.py resume-builder/build_resume.py dashboard/build_site.py dashboard/serve.py run_daily.sh run_scout.sh install_schedule.sh
 
 echo "Testing"
 ./fetch_jobs.py quota >/dev/null && ok "tracker runs" || warn "tracker failed: run ./fetch_jobs.py quota to see why"
@@ -66,6 +66,6 @@ cat <<'MSG'
 
 Next, in this folder:
   1. Put your resumes in inbox/
-  2. Run:  claude
+  2. Run:  ./archangel
   3. Type: /internship-setup
 MSG

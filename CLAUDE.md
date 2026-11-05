@@ -7,6 +7,7 @@ If `profile.toml` is missing or still empty, tell the user to run `./setup.sh` a
 
 | Path | What it is |
 |---|---|
+| `archangel` | boot screen with live checks, then starts Claude Code |
 | `.claude/skills/internship-setup/` | first-run interview |
 | `.claude/skills/internship-agent/` | operating rules for every run; read before changing behavior |
 | `.claude/agents/internship-scout.md` | finds fresh, low-competition postings |

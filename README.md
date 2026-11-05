@@ -40,15 +40,16 @@ cd archangel
 **4. Start the guided setup.**
 
 ```bash
-claude
+./archangel
 ```
 
-Then type `/internship-setup`. It reads your documents, asks about what's missing, builds a test resume, and tunes the search to your field. Allow 15 to 30 minutes.
+It plays the boot screen with live checks of your setup, then starts Claude Code. Type `/internship-setup`. It reads your documents, asks about what's missing, builds a test resume, and tunes the search to your field. Allow 15 to 30 minutes.
 
 ## ▓ 02 // DAILY USE
 
 | Do this | To |
 |---|---|
+| `./archangel` | boot screen with live status, then Claude Code |
 | `/internship-agent` in Claude Code | find jobs and prepare applications, or fill the ones you approved |
 | `./dashboard/serve.py` in a terminal | review and approve cards at http://127.0.0.1:8377 |
 | `./install_schedule.sh 06:45` | run it every morning automatically (optional) |
@@ -111,7 +112,7 @@ Check the first few applications closely, and open an issue when something break
 
 | Problem | Try |
 |---|---|
-| `/internship-setup` not found | Run `claude` from inside this folder |
+| `/internship-setup` not found | Start with `./archangel`, or run `claude` from inside this folder |
 | Resume won't build | Run `./resume-builder/build_resume.py <spec>` and read the message; it names the bullet or rule |
 | No jobs, or the wrong jobs | Ask Claude to adjust `[scoring]` and `[[company]]` in `config.toml` for your field |
 | A company is missing | `./probe_boards.py companyname` finds its board, then add it to `config.toml` |
