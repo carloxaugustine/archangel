@@ -1,4 +1,4 @@
-# Wingman
+# Philby
 
 An internship search agent run through Claude Code. It finds postings, tailors a resume per job, prepares applications
 for approval, submits approved Greenhouse and Lever applications, and drafts outreach the user sends themselves.
